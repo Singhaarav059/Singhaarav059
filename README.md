@@ -1,15 +1,13 @@
-# Hi, I'm Aarav 👋
+# Aarav Singh
 
-I build 3D websites and AI products at Demaze Technologies (Ahmedabad / Varanasi).
+Creative developer. I build scroll-driven 3D websites: real-time scenes, one camera, every section told in WebGL.
 
-**Featured work**
+**Latest:** [decignal.com](https://www.decignal.com), a 3D scroll story built in React Three Fiber, tuned to stay smooth on mid-range phones.
 
-- **[Decignal](https://www.decignal.com)**: scroll-driven 3D site for Decignal
-- **[Nopload](https://github.com/Singhaarav059/nopload)**: free PDF toolkit that runs in your browser, no uploads, works offline
-- **[Demaze Intelligence](https://github.com/Singhaarav059/demaze-intelligence)**: AI company research and outbound engine
+### What I work with
+three.js · React Three Fiber · GLSL · GSAP · Lenis · Next.js · TypeScript
+
+### Also building
+- **[Nopload](https://github.com/Singhaarav059/nopload)**: PDF toolkit that runs entirely in your browser, offline, no uploads
 - **[KrishiSahayak](https://github.com/Singhaarav059/krishisahayak)**: multilingual plant-disease detection for Indian farmers
 - **[FittiFi](https://github.com/Singhaarav059/fittifi-1)**: AI virtual try-on stylist
-
-**Stack:** TypeScript · Next.js · React Three Fiber / three.js · Node · Python · AI APIs
-
-📫 contact@demazetech.com

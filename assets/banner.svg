@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+<defs>
+<radialGradient id="g1" cx="12%" cy="10%" r="60%"><stop offset="0" stop-color="#dfe4ff"/><stop offset="1" stop-color="#dfe4ff" stop-opacity="0"/></radialGradient>
+<radialGradient id="g2" cx="88%" cy="30%" r="55%"><stop offset="0" stop-color="#ffe1e7"/><stop offset="1" stop-color="#ffe1e7" stop-opacity="0"/></radialGradient>
+<radialGradient id="g3" cx="55%" cy="110%" r="60%"><stop offset="0" stop-color="#dcf6ea"/><stop offset="1" stop-color="#dcf6ea" stop-opacity="0"/></radialGradient>
+<clipPath id="r"><rect width="1200" height="300" rx="28"/></clipPath>
+<pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#15172a" fill-opacity=".07"/></pattern>
+</defs>
+<style>
+.b{animation:bob 6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.cur{animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.w{animation:rise .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}}
+@media (prefers-reduced-motion:reduce){.b,.cur,.w{animation:none}}
+</style>
+<g clip-path="url(#r)">
+<rect width="1200" height="300" fill="#f4f6fb"/>
+<rect width="1200" height="300" fill="url(#g1)"/><rect width="1200" height="300" fill="url(#g2)"/><rect width="1200" height="300" fill="url(#g3)"/>
+<rect width="1200" height="300" fill="url(#dots)"/>
+<g class="b" style="animation-delay:-0s"><path d="M786,120 L820,137.0 L820,171.0 L786,154 Z" fill="#4f5bff"/><path d="M854,120 L820,137.0 L820,171.0 L854,154 Z" fill="#3a44d6"/><path d="M820,103.0 L854,120 L820,137.0 L786,120 Z" fill="#7b85ff"/></g><g class="b" style="animation-delay:-0.6s"><path d="M878,170 L900,181.0 L900,203.0 L878,192 Z" fill="#ff5d73"/><path d="M922,170 L900,181.0 L900,203.0 L922,192 Z" fill="#e0465d"/><path d="M900,159.0 L922,170 L900,181.0 L878,170 Z" fill="#ff8a9a"/></g><g class="b" style="animation-delay:-1.2s"><path d="M952,105 L980,119.0 L980,147.0 L952,133 Z" fill="#18b37e"/><path d="M1008,105 L980,119.0 L980,147.0 L1008,133 Z" fill="#10946a"/><path d="M980,91.0 L1008,105 L980,119.0 L952,105 Z" fill="#4fd3a2"/></g><g class="b" style="animation-delay:-0.3s"><path d="M1042,160 L1060,169.0 L1060,187.0 L1042,178 Z" fill="#ffb020"/><path d="M1078,160 L1060,169.0 L1060,187.0 L1078,178 Z" fill="#e09400"/><path d="M1060,151.0 L1078,160 L1060,169.0 L1042,160 Z" fill="#ffc75a"/></g><g class="b" style="animation-delay:-1.8s"><path d="M864,70 L880,78.0 L880,94.0 L864,86 Z" fill="#8b5cf6"/><path d="M896,70 L880,78.0 L880,94.0 L896,86 Z" fill="#6f43d6"/><path d="M880,62.0 L896,70 L880,78.0 L864,70 Z" fill="#b493ff"/></g><g class="b" style="animation-delay:-0.9s"><path d="M996,215 L1010,222.0 L1010,236.0 L996,229 Z" fill="#e6e9f3"/><path d="M1024,215 L1010,222.0 L1010,236.0 L1024,229 Z" fill="#cdd2e2"/><path d="M1010,208.0 L1024,215 L1010,222.0 L996,215 Z" fill="#ffffff"/></g><g class="b" style="animation-delay:-2.2s"><path d="M744,200 L760,208.0 L760,224.0 L744,216 Z" fill="#ffb020"/><path d="M776,200 L760,208.0 L760,224.0 L776,216 Z" fill="#e09400"/><path d="M760,192.0 L776,200 L760,208.0 L744,200 Z" fill="#ffc75a"/></g><g class="b" style="animation-delay:-1.5s"><path d="M1100,95 L1120,105.0 L1120,125.0 L1100,115 Z" fill="#4f5bff"/><path d="M1140,95 L1120,105.0 L1120,125.0 L1140,115 Z" fill="#3a44d6"/><path d="M1120,85.0 L1140,95 L1120,105.0 L1100,95 Z" fill="#7b85ff"/></g>
+</g>
+<rect x=".5" y=".5" width="1199" height="299" rx="27.5" fill="none" stroke="#15172a" stroke-opacity=".08"/>
+<g font-family="'Segoe UI', Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<text class="w" x="64" y="88" font-size="15" font-weight="600" fill="#6b7088" letter-spacing=".04em">HI, I'M</text>
+<text class="w" x="60" y="166" font-size="76" font-weight="800" fill="#15172a" letter-spacing="-2" style="animation-delay:.08s">Aarav Singh</text>
+<text class="w" x="64" y="212" font-size="26" font-weight="600" fill="#4f5bff" style="animation-delay:.16s">Creative developer · scroll-driven 3D websites<tspan class="cur" fill="#15172a"> _</tspan></text>
+<g class="w" style="animation-delay:.24s" font-size="14" font-weight="600">
+<rect x="64" y="236" width="78" height="28" rx="14" fill="#4f5bff"/><text x="103" y="255" text-anchor="middle" fill="#fff">three.js</text>
+<rect x="150" y="236" width="56" height="28" rx="14" fill="#ff5d73"/><text x="178" y="255" text-anchor="middle" fill="#fff">GLSL</text>
+<rect x="214" y="236" width="52" height="28" rx="14" fill="#18b37e"/><text x="240" y="255" text-anchor="middle" fill="#fff">R3F</text>
+<rect x="274" y="236" width="60" height="28" rx="14" fill="#ffb020"/><text x="304" y="255" text-anchor="middle" fill="#fff">GSAP</text>
+</g>
+</g>
+</svg>

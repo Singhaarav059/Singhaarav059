@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Tic-tac-toe · Aarav Singh</title>
+<meta name="description" content="Beat Aarav's bot at tic-tac-toe." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #15172a; --muted: #6b7088; --line: rgba(21,23,42,.1); --card: rgba(255,255,255,.78);
+    --x: #4f5bff; --o: #ff5d73; --win: #18b37e;
+    --bg1: #dfe4ff; --bg2: #ffe1e7; --bg3: #dff7ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: Urbanist, system-ui, sans-serif; color: var(--ink); min-height: 100vh; min-height: 100svh;
+    display: grid; place-items: center; padding: 24px 16px;
+    background:
+      radial-gradient(60% 50% at 15% 10%, var(--bg1), transparent 70%),
+      radial-gradient(50% 45% at 90% 25%, var(--bg2), transparent 70%),
+      radial-gradient(60% 50% at 50% 100%, var(--bg3), transparent 70%),
+      #f4f6fb;
+  }
+  main { width: min(440px, 100%); }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  h1 { font-size: 30px; font-weight: 900; letter-spacing: -.02em; margin: 0; }
+  a.back { color: var(--muted); font-size: 14px; text-decoration: none; }
+  a.back:hover { color: var(--ink); }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 28px; padding: 18px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 30px 60px -30px rgba(21,23,42,.25); }
+  .score { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .score div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; font-size: 13px; color: var(--muted); }
+  .score b { display: block; font-size: 24px; color: var(--ink); font-weight: 900; line-height: 1.1; }
+  .score .you b { color: var(--x); } .score .bot b { color: var(--o); }
+  .board { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; aspect-ratio: 1; }
+  .cell { position: relative; border: 1px solid var(--line); border-radius: 20px; background: #fff; cursor: pointer; padding: 0; transition: transform .15s ease, background .15s ease; -webkit-tap-highlight-color: transparent; }
+  .cell:hover:not([disabled]) { background: #f7f8ff; transform: translateY(-2px); }
+  .cell:active:not([disabled]) { transform: translateY(0) scale(.98); }
+  .cell[disabled] { cursor: default; }
+  .cell:focus-visible { outline: 3px solid var(--x); outline-offset: 2px; }
+  .cell svg { position: absolute; inset: 22%; width: 56%; height: 56%; overflow: visible; }
+  .cell path, .cell circle { fill: none; stroke-width: 12; stroke-linecap: round; }
+  .cell .x path { stroke: var(--x); stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw .28s ease-out forwards; }
+  .cell .x path + path { animation-delay: .12s; }
+  .cell .o circle { stroke: var(--o); stroke-dasharray: 260; stroke-dashoffset: 260; animation: draw .4s ease-out forwards; }
+  .cell.won { background: #effbf6; border-color: rgba(24,179,126,.35); }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .status { min-height: 26px; margin: 16px 2px 12px; font-size: 18px; font-weight: 700; text-align: center; }
+  .row { display: flex; gap: 8px; }
+  .seg { flex: 1; display: grid; grid-template-columns: 1fr 1fr; background: #eef0f6; border-radius: 14px; padding: 4px; }
+  .seg button, .new { font: inherit; font-weight: 700; font-size: 14px; border: 0; border-radius: 10px; padding: 10px; cursor: pointer; color: var(--muted); background: transparent; }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(21,23,42,.12); }
+  .new { flex: 0 0 auto; padding: 0 18px; background: var(--ink); color: #fff; }
+  .new:hover { background: #2b2f4a; }
+  footer { margin-top: 14px; text-align: center; color: var(--muted); font-size: 13px; }
+  @media (prefers-reduced-motion: reduce) { .cell .x path, .cell .o circle { animation-duration: 1ms; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Tic-tac-toe</h1>
+    <a class="back" href="https://github.com/Singhaarav059">← Back to GitHub</a>
+  </header>
+  <div class="panel">
+    <div class="score">
+      <div class="you">You<b id="sYou">0</b></div>
+      <div>Draws<b id="sDraw">0</b></div>
+      <div class="bot">Bot<b id="sBot">0</b></div>
+    </div>
+    <div class="board" id="board" role="grid" aria-label="Tic-tac-toe board"></div>
+    <div class="status" id="status" aria-live="polite">Your move. You are X.</div>
+    <div class="row">
+      <div class="seg" role="group" aria-label="Difficulty">
+        <button id="easy" aria-pressed="true">Casual</button>
+        <button id="hard" aria-pressed="false">Unbeatable</button>
+      </div>
+      <button class="new" id="new">New game</button>
+    </div>
+  </div>
+  <footer>The bot moves first every other game.</footer>
+</main>
+<script>
+(() => {
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const X = '<svg class="x" viewBox="0 0 100 100"><path d="M18 18 L82 82" pathLength="100"/><path d="M82 18 L18 82" pathLength="100"/></svg>';
+  const O = '<svg class="o" viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" pathLength="260"/></svg>';
+  const $ = (id) => document.getElementById(id);
+  const boardEl = $('board'), statusEl = $('status');
+  const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+  let score = store.get('ttt-score', { you: 0, bot: 0, draw: 0 });
+  let hard = store.get('ttt-hard', false);
+  let board, over, busy, game = 0;
+
+  const cells = [...Array(9)].map((_, i) => {
+    const b = document.createElement('button');
+    b.className = 'cell'; b.setAttribute('aria-label', `Square ${i + 1}, empty`);
+    b.addEventListener('click', () => play(i));
+    boardEl.appendChild(b); return b;
+  });
+
+  const winner = (b) => {
+    for (const l of LINES) if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[0]] === b[l[2]]) return { who: b[l[0]], line: l };
+    return b.every(Boolean) ? { who: 'draw' } : null;
+  };
+  // Minimax: perfect play. Casual mode plays a random square a third of the time.
+  function best(b) {
+    const free = b.flatMap((v, i) => (v ? [] : [i]));
+    if (!hard && Math.random() < 0.34) return free[Math.floor(Math.random() * free.length)];
+    let top = -Infinity, pick = [];
+    for (const i of free) {
+      b[i] = 'O'; const s = mm(b, false, 0); b[i] = null;
+      if (s > top) { top = s; pick = [i]; } else if (s === top) pick.push(i);
+    }
+    return pick[Math.floor(Math.random() * pick.length)];
+  }
+  function mm(b, bot, depth) {
+    const w = winner(b);
+    if (w) return w.who === 'O' ? 10 - depth : w.who === 'X' ? depth - 10 : 0;
+    let s = bot ? -Infinity : Infinity;
+    for (let i = 0; i < 9; i++) if (!b[i]) { b[i] = bot ? 'O' : 'X'; const v = mm(b, !bot, depth + 1); b[i] = null; s = bot ? Math.max(s, v) : Math.min(s, v); }
+    return s;
+  }
+
+  function mark(i, who) {
+    board[i] = who; cells[i].innerHTML = who === 'X' ? X : O; cells[i].disabled = true;
+    cells[i].setAttribute('aria-label', `Square ${i + 1}, ${who}`);
+  }
+  function finish(w) {
+    over = true; cells.forEach((c) => (c.disabled = true));
+    if (w.line) w.line.forEach((i) => cells[i].classList.add('won'));
+    if (w.who === 'X') { score.you++; statusEl.textContent = 'You win. Nice.'; }
+    else if (w.who === 'O') { score.bot++; statusEl.textContent = 'The bot wins this one.'; }
+    else { score.draw++; statusEl.textContent = hard ? "Draw. That's the best anyone gets." : 'Draw.'; }
+    store.set('ttt-score', score); renderScore();
+  }
+  function botTurn() {
+    busy = true; statusEl.textContent = 'Bot is thinking…';
+    setTimeout(() => {
+      mark(best(board), 'O'); busy = false;
+      const w = winner(board); if (w) return finish(w);
+      statusEl.textContent = 'Your move.';
+    }, 420);
+  }
+  function play(i) {
+    if (over || busy || board[i]) return;
+    mark(i, 'X');
+    const w = winner(board); if (w) return finish(w);
+    botTurn();
+  }
+  function renderScore() { $('sYou').textContent = score.you; $('sBot').textContent = score.bot; $('sDraw').textContent = score.draw; }
+  function reset() {
+    board = Array(9).fill(null); over = false; busy = false;
+    cells.forEach((c, i) => { c.innerHTML = ''; c.disabled = false; c.classList.remove('won'); c.setAttribute('aria-label', `Square ${i + 1}, empty`); });
+    if (game++ % 2) botTurn(); else statusEl.textContent = 'Your move. You are X.';
+  }
+  function setHard(v) { hard = v; store.set('ttt-hard', v); $('hard').setAttribute('aria-pressed', v); $('easy').setAttribute('aria-pressed', !v); }
+  $('easy').onclick = () => setHard(false);
+  $('hard').onclick = () => setHard(true);
+  $('new').onclick = reset;
+  setHard(hard); renderScore(); reset();
+})();
+</script>
+</body>
+</html>

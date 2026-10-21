@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="580" height="240" viewBox="0 0 580 240">
+<defs><radialGradient id="f" cx="85%" cy="20%" r="70%"><stop offset="0" stop-color="#4f5bff" stop-opacity=".18"/><stop offset="1" stop-color="#4f5bff" stop-opacity="0"/></radialGradient>
+<clipPath id="r"><rect width="580" height="240" rx="24"/></clipPath></defs>
+<style>
+.p{animation:pop 2.4s ease-in-out infinite}
+@keyframes pop{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.d{stroke-dasharray:100;stroke-dashoffset:100;animation:draw 4s ease-in-out infinite}
+@keyframes draw{0%{stroke-dashoffset:100}25%,85%{stroke-dashoffset:0}100%{stroke-dashoffset:100}}
+.fly{animation:fly 1.6s cubic-bezier(.2,.7,.4,1) infinite}
+@keyframes fly{0%{transform:translate(0,0);opacity:1}100%{transform:translate(var(--x),var(--y));opacity:0}}
+.shot{animation:shot .4s linear infinite}
+@keyframes shot{0%{transform:translateX(0);opacity:1}100%{transform:translateX(36px);opacity:0}}
+.btn{animation:nudge 2.4s ease-in-out infinite}
+@keyframes nudge{0%,70%,100%{transform:translateX(0)}80%{transform:translateX(4px)}}
+@media (prefers-reduced-motion:reduce){.p,.d,.fly,.shot,.btn{animation:none;stroke-dashoffset:0}}
+</style>
+<g clip-path="url(#r)"><rect width="580" height="240" fill="#ffffff"/><rect width="580" height="240" fill="url(#f)"/><g stroke="#15172a" stroke-opacity=".14" stroke-width="5" stroke-linecap="round"><path d="M420,30 V198 M480,30 V198 M366,84 H534 M366,144 H534"/></g><g stroke="#4f5bff" stroke-width="8" stroke-linecap="round"><path class="d" pathLength="100" style="animation-delay:0s" d="M434.0,98.0 L466.0,130.0"/><path class="d" pathLength="100" style="animation-delay:0.1s" d="M466.0,98.0 L434.0,130.0"/></g><circle class="d" pathLength="100" style="animation-delay:0.3s" cx="390.0" cy="54.0" r="18" fill="none" stroke="#ff5d73" stroke-width="8" stroke-linecap="round"/><g stroke="#4f5bff" stroke-width="8" stroke-linecap="round"><path class="d" pathLength="100" style="animation-delay:0.6s" d="M494.0,38.0 L526.0,70.0"/><path class="d" pathLength="100" style="animation-delay:0.7s" d="M526.0,38.0 L494.0,70.0"/></g><circle class="d" pathLength="100" style="animation-delay:0.9s" cx="390.0" cy="174.0" r="18" fill="none" stroke="#ff5d73" stroke-width="8" stroke-linecap="round"/><g stroke="#4f5bff" stroke-width="8" stroke-linecap="round"><path class="d" pathLength="100" style="animation-delay:1.2s" d="M374.0,98.0 L406.0,130.0"/><path class="d" pathLength="100" style="animation-delay:1.3s" d="M406.0,98.0 L374.0,130.0"/></g><circle class="d" pathLength="100" style="animation-delay:1.5s" cx="510.0" cy="114.0" r="18" fill="none" stroke="#ff5d73" stroke-width="8" stroke-linecap="round"/><g stroke="#4f5bff" stroke-width="8" stroke-linecap="round"><path class="d" pathLength="100" style="animation-delay:1.8s" d="M434.0,38.0 L466.0,70.0"/><path class="d" pathLength="100" style="animation-delay:1.9000000000000001s" d="M466.0,38.0 L434.0,70.0"/></g></g>
+<rect x=".5" y=".5" width="579" height="239" rx="23.5" fill="none" stroke="#15172a" stroke-opacity=".1"/>
+<g font-family="'Segoe UI', Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<text x="32" y="150" font-size="30" font-weight="800" fill="#15172a" letter-spacing="-.5">Tic-tac-toe</text>
+<text x="32" y="180" font-size="16" fill="#6b7088">Beat my bot. Casual or unbeatable.</text>
+<g class="btn"><rect x="32" y="196" width="108" height="30" rx="15" fill="#15172a"/><text x="86" y="216" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">Play now →</text></g>
+</g>
+</svg>

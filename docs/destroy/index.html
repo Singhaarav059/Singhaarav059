@@ -67,6 +67,7 @@
   .keys { font-size: 12px; color: #6b7088; margin-top: 16px; line-height: 1.8; }
   .keys b { font-weight: 800; color: var(--ink); background: #f4f6fb; border-radius: 5px; padding: 1px 5px; }
   .back { display: block; text-align: center; margin-top: 14px; color: #6b7088; font-size: 13px; }
+  @media (pointer: coarse) { .keys, .bm, .bm-l { display: none; } .phone { display: block !important; } }
   @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; } .side { display: grid; grid-template-columns: 88px 1fr; gap: 0 16px; } .side img.av { grid-row: span 3; } .side h1 { margin-top: 0; } .repos { grid-template-columns: 1fr; } header.gh nav { display: none; } }
 </style>
 </head>
@@ -105,8 +106,9 @@
     <div class="skins" id="skins"></div>
     <div class="lbl">DESTROY ANOTHER GITHUB PROFILE</div>
     <form class="who" id="who"><input name="u" placeholder="GitHub username, e.g. torvalds" autocomplete="off" spellcheck="false" /><button>Load</button></form>
-    <div class="lbl">DESTROY ANY WEBSITE</div>
+    <div class="lbl bm-l">DESTROY ANY WEBSITE</div>
     <div class="bm"><a id="bm" href="#" title="Drag me to your bookmarks bar">Wreck it</a><span>Drag this to your bookmarks bar, open any site, then click it.</span></div>
+    <div class="keys phone" style="display:none">Left thumb moves and jumps (push up), right thumb aims and fires.</div>
     <div class="keys"><b>A</b> <b>D</b> move · <b>W</b> jump, again to flip, hold to fly · <b>S</b> drop · <b>Click</b> fire · <b>Q</b> grenade · <b>1</b>–<b>0</b> weapons · <b>Esc</b> exit</div>
     <a class="back" href="https://github.com/Singhaarav059">← Back to GitHub</a>
   </div>
@@ -141,9 +143,19 @@
     const doc = new DOMParser().parseFromString(html, 'text/html');
     doc.querySelectorAll('script,iframe,object,embed,style,link,meta,form').forEach((n) => n.remove());
     doc.querySelectorAll('*').forEach((n) => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || (/^(href|src)$/i.test(a.name) && /^\s*javascript:/i.test(a.value))) n.removeAttribute(a.name); });
-    // our own profile's SVG art is served from this site, since raw.githubusercontent serves SVG as text
-    doc.querySelectorAll('img').forEach((im) => { const s = im.getAttribute('src') || ''; const m = s.match(/Singhaarav059\/Singhaarav059\/(?:raw\/)?(?:main|HEAD)\/assets\/([\w-]+\.svg)/); if (m) im.src = new URL('../assets/' + m[1], location.href).href; im.loading = 'eager'; });
+    // README paths are relative to the repo; resolve them against its raw files
+    const raw = `https://raw.githubusercontent.com/${user}/${user}/HEAD/`;
+    doc.querySelectorAll('picture source').forEach((n) => n.remove());
+    doc.querySelectorAll('img').forEach((im) => { const s = im.getAttribute('src') || ''; if (s && !/^(https?:|data:)/.test(s)) im.setAttribute('src', new URL(s.replace(/^\.?\//, ''), raw).href); im.loading = 'eager'; });
+    doc.querySelectorAll('a[href]').forEach((a) => { const s = a.getAttribute('href'); if (s && !/^(https?:|#|mailto:)/.test(s)) a.setAttribute('href', new URL(s, `https://github.com/${user}/${user}/blob/HEAD/`).href); });
     return doc.body.innerHTML;
+  }
+  // raw.githubusercontent serves SVG as plain text, which an <img> refuses; re-serve it as an SVG blob
+  function fixSvgs(root) {
+    root.querySelectorAll('img').forEach((im) => {
+      if (!/^https:\/\/raw\.githubusercontent\.com\/.+\.svg(\?|$)/.test(im.src)) return;
+      fetch(im.src).then((r) => (r.ok ? r.text() : Promise.reject())).then((t) => { im.src = URL.createObjectURL(new Blob([t], { type: 'image/svg+xml' })); }).catch(() => {});
+    });
   }
   const api = (p, accept) => fetch('https://api.github.com' + p, { headers: { Accept: accept || 'application/vnd.github+json' } }).then((r) => (r.ok ? (accept ? r.text() : r.json()) : Promise.reject(r.status)));
   document.title = `Wreck ${user} · GitHub profile`;
@@ -158,7 +170,7 @@
     $('followers').innerHTML = `<b>${u.followers}</b> followers · <b>${u.following}</b> following`;
     $('loc').textContent = u.location || ''; $('blog').innerHTML = u.blog ? `<a href="${esc(/^https?:/.test(u.blog) ? u.blog : 'https://' + u.blog)}">${esc(u.blog.replace(/^https?:\/\//, ''))}</a>` : '';
     $('path').textContent = `${u.login} / README.md`;
-    if (readme) $('readme').innerHTML = clean(readme); else $('readme').closest('.box').style.display = 'none';
+    if (readme) { $('readme').innerHTML = clean(readme); fixSvgs($('readme')); } else $('readme').closest('.box').style.display = 'none';
     const list = (Array.isArray(repos) ? repos : []).filter((r) => !r.fork && r.name.toLowerCase() !== u.login.toLowerCase()).sort((a, b) => b.stargazers_count - a.stargazers_count || (b.pushed_at > a.pushed_at ? 1 : -1)).slice(0, 6);
     $('repos').innerHTML = list.map((r) => `<div class="repo"><div class="nm"><a href="${esc(r.html_url)}">${esc(r.name)}</a><span class="vis">${r.archived ? 'Public archive' : 'Public'}</span></div><p>${esc(r.description || '')}</p><div class="lang">${r.language ? `<span><i class="dot" style="background:${LANG[r.language] || '#8b949e'}"></i>${esc(r.language)}</span>` : ''}${r.stargazers_count ? `<span>★ ${r.stargazers_count}</span>` : ''}</div></div>`).join('');
   }).catch((e) => {

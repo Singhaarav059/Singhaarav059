@@ -204,7 +204,7 @@
       for (const h of b.holes) {
         if (h.r > 5) { // scorch: soft burn with a ragged dark core
           const g = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, h.r * 1.8);
-          g.addColorStop(0, 'rgba(21,23,42,.55)'); g.addColorStop(0.45, 'rgba(43,47,74,.28)'); g.addColorStop(1, 'rgba(43,47,74,0)');
+          g.addColorStop(0, 'rgba(21,23,42,.42)'); g.addColorStop(0.45, 'rgba(43,47,74,.16)'); g.addColorStop(1, 'rgba(43,47,74,0)');
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(h.x, h.y, h.r * 1.8, 0, 7); ctx.fill();
           ctx.fillStyle = 'rgba(21,23,42,.5)'; ctx.beginPath();
           for (let k = 0; k < 9; k++) { const a = (k / 9) * Math.PI * 2, rr2 = h.r * (0.35 + 0.25 * Math.abs(Math.sin(h.x * 0.7 + k * 2.3))); ctx.lineTo(h.x + Math.cos(a) * rr2, h.y + Math.sin(a) * rr2); }
@@ -262,7 +262,10 @@
   }
   function shatter(b, hx, hy) {
     b.dead = true; S.stats.elements++; S.progress += b.weight; invalidate(b.y, b.y + b.h);
-    const cols = clamp(Math.round(b.w / 46), 2, 7), rows = clamp(Math.round(b.h / 46), 2, 7);
+    // pieces about 36px across, at most ~70 per element, so wide bars break into rubble rather than slabs
+    let cols = clamp(Math.round(b.w / 36), 1, 16), rows = clamp(Math.round(b.h / 36), 1, 10);
+    while (cols * rows > 70) { if (cols >= rows) cols--; else rows--; }
+    cols = Math.max(cols, b.w > 24 ? 2 : 1); rows = Math.max(rows, b.h > 24 ? 2 : 1);
     const P = [];
     for (let j = 0; j <= rows; j++) { P[j] = []; for (let i = 0; i <= cols; i++) { const ex = i === 0 || i === cols, ey = j === 0 || j === rows; P[j][i] = [b.x + (i / cols) * b.w + (ex ? 0 : rnd(-0.3, 0.3) * b.w / cols), b.y + (j / rows) * b.h + (ey ? 0 : rnd(-0.3, 0.3) * b.h / rows)]; } }
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
@@ -535,6 +538,8 @@
   // ---------------------------------------------------------------- debris physics
   function stepBodies(dt) {
     const L = S.L;
+    // settled shards fade away after a few seconds so the page stays readable; letters stay where they land
+    for (let i = S.bodies.length - 1; i >= 0; i--) { const o = S.bodies[i]; if (o.k === 's' && o.sleep > 0.6) { o.rest = (o.rest || 0) + dt; if (o.rest > 3.5) { o.life -= dt / 1.2; if (o.life <= 0) S.bodies.splice(i, 1); } } }
     for (const o of S.bodies) {
       if (o.sleep > 0.6 && !o.check) continue;
       if (o.free > 0) o.free -= dt; else o.vy += GRAV * 0.85 * dt;
@@ -597,6 +602,7 @@
     for (const o of S.bodies) {
       if (o.y < top - 60 || o.y > top + S.vh + 60) continue;
       ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.a);
+      if (o.life < 1) { ctx.globalAlpha = Math.max(0, o.life); ctx.scale(0.6 + 0.4 * o.life, 0.6 + 0.4 * o.life); }
       if (o.k === 'g') { ctx.font = o.font; ctx.fillStyle = o.color; ctx.fillText(o.ch, o.ox, o.by); }
       else {
         const b = o.box, q = o.poly; ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (let k = 1; k < q.length; k++) ctx.lineTo(q[k][0], q[k][1]); ctx.closePath();
@@ -604,10 +610,11 @@
         ctx.fillStyle = b.fill || (b.grad && b.grad[0]) || (b.stroke || '#d9dce8'); ctx.fillRect(b.x, b.y, b.w, b.h);
         if (b.img) try { ctx.drawImage(b.img, b.x, b.y, b.w, b.h); } catch {}
         ctx.restore();
-        ctx.strokeStyle = 'rgba(21,23,42,.25)'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.strokeStyle = 'rgba(21,23,42,.14)'; ctx.lineWidth = 1; ctx.stroke();
       }
       ctx.restore();
     }
+    ctx.globalAlpha = 1;
     // shots
     for (const s of S.shots) {
       if (s.k === 'b') { const a = Math.atan2(s.vy, s.vx); ctx.strokeStyle = '#ffb020'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - Math.cos(a) * 18, s.y - Math.sin(a) * 18); ctx.stroke(); }
@@ -741,7 +748,7 @@
   .stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(21,23,42,.55)}
   .tbtns{position:fixed;right:16px;bottom:78px;display:none;flex-direction:column;gap:10px}
   .tbtns button{width:58px;height:58px;border-radius:18px;font-size:18px;padding:0}
-  @media (pointer:coarse){.hint{display:none}.tbtns{display:flex}.slot{width:50px}.slot canvas{width:42px}.meter{width:150px}}
+  @media (pointer:coarse){.hint{display:none}.tbtns{display:flex}.slot{width:50px}.slot canvas{width:42px}.meter{width:132px;padding:8px 10px}.meter b{font-size:18px}.btns button{width:40px;height:40px;padding:0;font-size:16px}.top{left:10px;right:10px;top:10px}}
   `;
   function buildHud() {
     const host = document.createElement('div'); host.setAttribute('data-wreck', '');
@@ -777,7 +784,8 @@
     S.hud.wname.textContent = W[i].name; S.hud.wname.style.opacity = '1'; S.wnameT = 1.3;
     flameSound(false);
   }
-  function toggleMute() { muted = !muted; try { localStorage.setItem('wreck-muted', muted ? '1' : '0'); } catch {} S.hud.$('.snd').textContent = muted ? 'Sound off' : 'Sound on'; if (muted) flameSound(false); }
+  function toggleMute() { muted = !muted; try { localStorage.setItem('wreck-muted', muted ? '1' : '0'); } catch {} sndLabel(); if (muted) flameSound(false); }
+  function sndLabel() { const c = matchMedia('(pointer: coarse)').matches; S.hud.$('.snd').textContent = c ? (muted ? '🔇' : '🔊') : muted ? 'Sound off' : 'Sound on'; S.hud.$('.rst').textContent = c ? '↻' : 'Rebuild'; S.hud.$('.ext').textContent = c ? '✕' : 'Exit ✕'; }
   function hudTick(dt) {
     const p = clamp(S.progress / S.total, 0, 1);
     S.hud.pct.textContent = Math.floor(p * 100) + '%'; S.hud.bar.style.width = (p * 100).toFixed(1) + '%';
@@ -871,7 +879,7 @@
     S.stats = { letters: 0, elements: 0, explosions: 0, shots: 0, eaten: 0 };
     if (!keepCam) S.cam = clamp(scrollY, 0, Math.max(0, L.docH - innerHeight));
     const w = S.p ? S.p.weapon : 0;
-    S.p = makePlayer(Math.min(90, L.vw / 2), S.cam + 40); S.p.weapon = w;
+    S.p = makePlayer(Math.min(90, L.vw / 2), S.cam + Math.min(260, innerHeight * 0.3)); S.p.weapon = w;
   }
   function rebuild() { if (!S) return; S.hud.root.querySelector('.done')?.remove(); build(true); }
   function start() {
@@ -884,7 +892,7 @@
     document.documentElement.appendChild(cv);
     S.hud = buildHud(); resize();
     document.documentElement.style.overflow = 'hidden';
-    bindInput(); setWeapon(1); setWeapon(0); S.hud.$('.snd').textContent = muted ? 'Sound off' : 'Sound on';
+    bindInput(); setWeapon(1); setWeapon(0); sndLabel();
     S.aimY = S.cam + innerHeight / 2;
     let last = performance.now();
     const loop = (now) => {

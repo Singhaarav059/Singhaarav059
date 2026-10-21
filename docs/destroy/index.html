@@ -3,327 +3,168 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Destroy this profile · Aarav Singh</title>
-<meta name="description" content="A stickman with an SMG and a bag of bombs versus Aarav Singh's profile, built out of pixels." />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;700;900&family=Silkscreen&display=swap" rel="stylesheet" />
+<title>Wreck this profile · Aarav Singh</title>
+<meta name="description" content="Turn any GitHub profile, or any website, into a level and destroy it with a stickman. Ten weapons, a jetpack and a black hole." />
+<meta property="og:title" content="Wreck this profile" />
+<meta property="og:description" content="Ten weapons, a jetpack and a black hole versus a GitHub profile." />
 <style>
-  :root { --ink: #15172a; --bg: #f4f6fb; --muted: #6b7088; --blue: #4f5bff; }
+  :root { --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --soft: #f6f8fa; --link: #0969da; --ink: #15172a; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none; }
-  body { font-family: Urbanist, system-ui, sans-serif; color: var(--ink); -webkit-user-select: none; user-select: none; }
-  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; image-rendering: pixelated; cursor: crosshair; }
-  .hud { position: fixed; left: 16px; right: 16px; top: 14px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; pointer-events: none; font-family: Silkscreen, monospace; font-size: 13px; }
-  .pill { pointer-events: auto; background: rgba(255,255,255,.86); border: 1px solid rgba(21,23,42,.1); border-radius: 12px; padding: 9px 12px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-  .keys { color: var(--muted); line-height: 1.7; }
-  .keys b { color: var(--ink); font-weight: 400; background: #fff; border: 1px solid rgba(21,23,42,.15); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
-  .right { display: flex; gap: 8px; align-items: center; }
-  .meter { min-width: 150px; }
-  .bar { height: 6px; background: #e3e6f0; border-radius: 3px; margin-top: 6px; overflow: hidden; }
-  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4f5bff, #ff5d73, #ffb020); }
-  button, a.btn { pointer-events: auto; font: inherit; color: var(--ink); background: #fff; border: 1px solid rgba(21,23,42,.15); border-bottom-width: 3px; border-radius: 10px; padding: 8px 12px; cursor: pointer; text-decoration: none; }
-  button:active, a.btn:active { transform: translateY(1px); border-bottom-width: 2px; }
-  .touch { position: fixed; bottom: calc(16px + env(safe-area-inset-bottom)); left: 16px; right: 16px; display: none; justify-content: space-between; pointer-events: none; }
-  .touch .pad { display: flex; gap: 10px; }
-  .touch button { width: 64px; height: 64px; border-radius: 18px; font-size: 20px; padding: 0; background: rgba(255,255,255,.9); touch-action: none; }
-  @media (pointer: coarse) { .touch { display: flex; } .keys { display: none; } }
-  .toast { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); font-family: Silkscreen, monospace; font-size: clamp(22px, 5vw, 44px); color: var(--ink); text-align: center; pointer-events: none; opacity: 0; transition: opacity .4s; }
-  .toast.on { opacity: 1; }
-  .toast small { display: block; font-size: 14px; color: var(--muted); margin-top: 8px; }
+  body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif; color: var(--fg); background: #fff; }
+  a { color: var(--link); text-decoration: none; }
+  header.gh { background: #f6f8fa; border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; align-items: center; gap: 14px; }
+  header.gh svg { flex: none; }
+  header.gh .crumb { font-weight: 600; font-size: 15px; }
+  header.gh nav { margin-left: auto; display: flex; gap: 18px; color: var(--muted); }
+  .tabs { border-bottom: 1px solid var(--line); padding: 0 24px; display: flex; gap: 6px; overflow-x: auto; }
+  .tabs span { padding: 10px 10px 9px; color: var(--fg); white-space: nowrap; }
+  .tabs span.on { border-bottom: 2px solid #fd8c73; font-weight: 600; }
+  .tabs em { font-style: normal; background: #e7ecf0; border-radius: 10px; padding: 0 7px; font-size: 12px; margin-left: 4px; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 296px 1fr; gap: 24px; }
+  .side img.av { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--line); display: block; }
+  .side h1 { margin: 16px 0 0; font-size: 24px; line-height: 1.25; font-weight: 600; }
+  .side .login { font-size: 20px; font-weight: 300; color: var(--muted); }
+  .side .bio { font-size: 16px; margin: 12px 0; }
+  .follow { display: block; width: 100%; text-align: center; padding: 5px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--soft); color: var(--fg); font-weight: 500; margin: 12px 0; }
+  .side .meta { color: var(--muted); margin: 6px 0; }
+  .side .meta b { color: var(--fg); }
+  .box { border: 1px solid var(--line); border-radius: 6px; padding: 24px; }
+  .box .path { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); margin-bottom: 16px; }
+  .md img { max-width: 100%; }
+  .md .anchor, .md .octicon-link { display: none; }
+  .md h1, .md h2, .md h3 { border-bottom: 1px solid var(--line); padding-bottom: .3em; }
+  .md h3 { border: 0; }
+  .md table { border-collapse: collapse; }
+  .md td, .md th { border: 1px solid var(--line); padding: 6px 13px; }
+  .md code { background: rgba(129,139,152,.12); padding: .2em .4em; border-radius: 6px; font-size: 85%; }
+  h2.sec { font-size: 16px; font-weight: 400; margin: 24px 0 8px; }
+  .repos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .repo { border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 8px; min-height: 112px; }
+  .repo .nm { font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+  .repo .vis { font-size: 12px; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
+  .repo p { margin: 0; color: var(--muted); font-size: 12px; flex: 1; }
+  .repo .lang { font-size: 12px; color: var(--muted); display: flex; gap: 14px; }
+  .repo .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+  .note { color: var(--muted); margin: 18px 0 0; }
+
+  /* start screen */
+  .start { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(21,23,42,.42); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+  .start.hidden { display: none; }
+  .panel { width: min(520px, 100%); background: #fff; border-radius: 24px; padding: 24px; box-shadow: 0 40px 80px -30px rgba(21,23,42,.5); font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
+  .panel h2 { margin: 0; font-size: 30px; font-weight: 900; letter-spacing: -.02em; }
+  .panel p { color: #59607a; margin: 6px 0 18px; font-size: 15px; }
+  .play { width: 100%; font: inherit; font-size: 18px; font-weight: 900; color: #fff; background: var(--ink); border: 0; border-radius: 14px; padding: 14px; cursor: pointer; }
+  .play:hover { background: #2b2f4a; }
+  .lbl { font-size: 12px; font-weight: 800; color: #6b7088; margin: 18px 0 8px; letter-spacing: .02em; }
+  .skins { display: flex; gap: 8px; }
+  .skins button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px #d1d5e2; cursor: pointer; }
+  .skins button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
+  form.who { display: flex; gap: 8px; }
+  form.who input { flex: 1; min-width: 0; font: inherit; font-size: 15px; border: 1px solid #d1d5e2; border-radius: 12px; padding: 10px 12px; }
+  form.who button { font: inherit; font-weight: 800; border: 1px solid #d1d5e2; border-bottom-width: 3px; background: #fff; border-radius: 12px; padding: 0 14px; cursor: pointer; }
+  .bm { display: flex; align-items: center; gap: 10px; background: #f4f6fb; border-radius: 14px; padding: 10px 12px; font-size: 13px; color: #59607a; }
+  .bm a { flex: none; font-weight: 900; color: #fff; background: #ff5d73; padding: 8px 12px; border-radius: 10px; cursor: grab; }
+  .keys { font-size: 12px; color: #6b7088; margin-top: 16px; line-height: 1.8; }
+  .keys b { font-weight: 800; color: var(--ink); background: #f4f6fb; border-radius: 5px; padding: 1px 5px; }
+  .back { display: block; text-align: center; margin-top: 14px; color: #6b7088; font-size: 13px; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; } .side { display: grid; grid-template-columns: 88px 1fr; gap: 0 16px; } .side img.av { grid-row: span 3; } .side h1 { margin-top: 0; } .repos { grid-template-columns: 1fr; } header.gh nav { display: none; } }
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
-<div class="hud">
-  <div class="pill keys">
-    <b>A</b><b>D</b> move &nbsp; <b>W</b>/<b>Space</b> jump<br />
-    <b>Click</b> shoot &nbsp; <b>Q</b> or <b>Right-click</b> bomb &nbsp; <b>R</b> rebuild
-  </div>
-  <div class="right">
-    <div class="pill meter"><span id="pct">0%</span> destroyed<div class="bar"><i id="bar"></i></div></div>
-    <button id="reset" title="Rebuild the profile (R)">Rebuild</button>
-    <a class="btn" href="https://github.com/Singhaarav059" title="Back to the GitHub profile">GitHub ↗</a>
-  </div>
-</div>
-<div class="touch">
-  <div class="pad"><button data-k="left">◀</button><button data-k="right">▶</button></div>
-  <div class="pad"><button data-k="bomb">✹</button><button data-k="jump">▲</button></div>
-</div>
-<div class="toast" id="toast"></div>
+<header class="gh">
+  <svg height="32" viewBox="0 0 16 16" width="32" aria-hidden="true"><path fill="#1f2328" d="M8 0c4.42 0 8 3.58 8 8a8.01 8.01 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+  <span class="crumb" id="crumb">Singhaarav059</span>
+  <nav><span>Pull requests</span><span>Issues</span><span>Explore</span></nav>
+</header>
+<div class="tabs"><span class="on">Overview</span><span>Repositories<em id="nrepos">·</em></span><span>Projects</span><span>Packages</span><span>Stars</span></div>
+<main class="wrap">
+  <aside class="side">
+    <img class="av" id="av" alt="" />
+    <h1 id="name">Aarav Singh</h1>
+    <div class="login" id="login">Singhaarav059</div>
+    <a class="follow">Follow</a>
+    <div class="bio" id="bio"></div>
+    <div class="meta" id="followers"></div>
+    <div class="meta" id="loc"></div>
+    <div class="meta" id="blog"></div>
+  </aside>
+  <section>
+    <div class="box"><div class="path" id="path">Singhaarav059 / README.md</div><div class="md" id="readme"></div></div>
+    <h2 class="sec">Popular repositories</h2>
+    <div class="repos" id="repos"></div>
+    <p class="note" id="note"></p>
+  </section>
+</main>
 
+<div class="start" id="start">
+  <div class="panel">
+    <h2 id="title">Wreck this profile</h2>
+    <p>Ten weapons, a jetpack and a black hole. Every letter and box on the page is a block you can blow apart.</p>
+    <button class="play" id="play">Play</button>
+    <div class="lbl">SCARF</div>
+    <div class="skins" id="skins"></div>
+    <div class="lbl">DESTROY ANOTHER GITHUB PROFILE</div>
+    <form class="who" id="who"><input name="u" placeholder="GitHub username, e.g. torvalds" autocomplete="off" spellcheck="false" /><button>Load</button></form>
+    <div class="lbl">DESTROY ANY WEBSITE</div>
+    <div class="bm"><a id="bm" href="#" title="Drag me to your bookmarks bar">Wreck it</a><span>Drag this to your bookmarks bar, open any site, then click it.</span></div>
+    <div class="keys"><b>A</b> <b>D</b> move · <b>W</b> jump, again to flip, hold to fly · <b>S</b> drop · <b>Click</b> fire · <b>Q</b> grenade · <b>1</b>–<b>0</b> weapons · <b>Esc</b> exit</div>
+    <a class="back" href="https://github.com/Singhaarav059">← Back to GitHub</a>
+  </div>
+</div>
+
+<script src="engine.js" data-auto="off"></script>
 <script>
 (() => {
-  const S = 3;                        // CSS px per block
-  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-  const grid = document.createElement('canvas'), gctx = grid.getContext('2d');
-  const pct = document.getElementById('pct'), bar = document.getElementById('bar'), toast = document.getElementById('toast');
-  let W, H, GW, GH, cells, solid, total, img, dpr;
-  const BG = [244, 246, 251];
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const user = (params.get('user') || 'Singhaarav059').replace(/[^A-Za-z0-9-]/g, '').slice(0, 39) || 'Singhaarav059';
+  const LANG = { TypeScript: '#3178c6', JavaScript: '#f1e05a', Python: '#3572A5', HTML: '#e34c26', CSS: '#663399', Java: '#b07219', 'C++': '#f34b7d', Dart: '#00B4AB', Go: '#00ADD8', Rust: '#dea584', Shell: '#89e051', EJS: '#a91e50', Makefile: '#427819', Vue: '#41b883', Swift: '#F05138', Kotlin: '#A97BFF', C: '#555555', 'C#': '#178600', Ruby: '#701516', PHP: '#4F5D95' };
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  // ---------- level: the profile, drawn once at full resolution, then sampled into blocks ----------
-  function buildLevel() {
-    dpr = Math.min(2, window.devicePixelRatio || 1);
-    W = innerWidth; H = innerHeight;
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    GW = Math.ceil(W / S); GH = Math.ceil(H / S);
-    grid.width = GW; grid.height = GH;
+  // the bookmarklet loads this same engine into whatever page you are on
+  const src = new URL('engine.js', location.href).href;
+  $('bm').href = `javascript:(()=>{if(window.Wreck)return Wreck.start();const s=document.createElement('script');s.src='${src}?'+Date.now();document.body.appendChild(s)})()`;
+  $('bm').addEventListener('click', (e) => { e.preventDefault(); alert('Drag the button to your bookmarks bar, then click it on any website.'); });
 
-    const art = document.createElement('canvas'); art.width = W; art.height = H;
-    const a = art.getContext('2d');
-    const m = Math.min(1, W / 1100);              // scale content down on narrow screens
-    const cx = W / 2;
-    const rr = (x, y, w, h, r, fill) => { a.fillStyle = fill; a.beginPath(); a.roundRect(x, y, w, h, r); a.fill(); };
-    a.textAlign = 'center'; a.textBaseline = 'alphabetic';
+  // scarf colours
+  const SKINS = ['#ff5d73', '#4f5bff', '#18b37e', '#ffb020', '#8b5cf6', '#15172a'];
+  let skin = SKINS[0]; try { skin = localStorage.getItem('wreck-skin') || skin; } catch {}
+  SKINS.forEach((c) => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', 'Scarf colour'); b.setAttribute('aria-pressed', c === skin); b.onclick = () => { skin = c; try { localStorage.setItem('wreck-skin', c); } catch {} [...$('skins').children].forEach((x) => x.setAttribute('aria-pressed', x === b)); }; $('skins').appendChild(b); });
 
-    // nav bar
-    const navW = Math.min(W - 32, 760);
-    rr(cx - navW / 2, 70, navW, 40, 12, '#ffffff');
-    a.fillStyle = '#15172a'; a.font = `700 ${16}px Urbanist`; a.textAlign = 'left';
-    a.fillText('Singhaarav059', cx - navW / 2 + 16, 96);
-    a.textAlign = 'right'; a.fillStyle = '#6b7088'; a.font = `500 14px Urbanist`;
-    a.fillText(W > 520 ? 'Overview   Repositories   Stars' : 'Overview', cx + navW / 2 - 16, 95);
-    a.textAlign = 'center';
+  $('who').addEventListener('submit', (e) => { e.preventDefault(); const u = e.target.u.value.trim(); if (u) location.search = '?user=' + encodeURIComponent(u); });
+  const startGame = () => { $('start').classList.add('hidden'); Wreck.skin = skin; Wreck.start(); };
+  $('play').addEventListener('click', startGame);
+  Wreck.onExit = () => $('start').classList.remove('hidden');
 
-    // headline
-    const narrow = W < 620, tag = narrow ? 24 : Math.round(34 * m);
-    const chM = Math.max(.7, m), chH = 150 * chM, block = 190 * m + (narrow ? tag : 0) + chH + (narrow ? 120 : 80);
-    const top = Math.max(124, Math.round((H - 6 * S - block) / 2) - 10);
-    a.fillStyle = '#15172a'; a.font = `900 ${Math.round(110 * m)}px Urbanist`;
-    a.fillText('Aarav Singh', cx, top + 90 * m);
-    a.fillStyle = '#4f5bff'; a.font = `700 ${tag}px Urbanist`;
-    if (narrow) { a.fillText('Creative developer', cx, top + 90 * m + tag + 14); a.fillText('Scroll-driven 3D websites', cx, top + 90 * m + tag * 2 + 20); }
-    else a.fillText('Creative developer · scroll-driven 3D websites', cx, top + 145 * m);
-
-    // project cards
-    const cards = [['Nopload', 'PDF tools, offline', '#4f5bff'], ['KrishiSahayak', 'Plant-disease AI', '#18b37e'], ['FittiFi', 'AI try-on stylist', '#ff5d73']];
-    const gap = narrow ? 10 : 16, cw = Math.min(260, (W - 32 - gap * 2) / 3), ch = chH;
-    const y0 = top + 190 * m + (narrow ? tag * 2 : 0), x0 = cx - (cw * 3 + gap * 2) / 2;
-    cards.forEach(([t, d, c], i) => {
-      const x = x0 + i * (cw + gap);
-      rr(x, y0, cw, ch, 16, '#ffffff');
-      rr(x + 14, y0 + 14, cw - 28, ch * 0.38, 10, c);
-      a.fillStyle = '#15172a'; a.font = `700 ${Math.round(22 * Math.max(.7, m))}px Urbanist`; a.textAlign = 'left';
-      a.fillText(t, x + 16, y0 + ch * 0.38 + 46 * Math.max(.7, m));
-      a.fillStyle = '#6b7088'; a.font = `500 ${Math.round(15 * Math.max(.7, m))}px Urbanist`;
-      a.fillText(d, x + 16, y0 + ch * 0.38 + 70 * Math.max(.7, m));
-      a.textAlign = 'center';
-    });
-
-    // stack chips
-    const chips = ['three.js', 'R3F', 'GLSL', 'GSAP', 'Next.js', 'TypeScript'], cols = ['#4f5bff', '#8b5cf6', '#ff5d73', '#ffb020', '#15172a', '#18b37e'];
-    a.font = `700 15px Urbanist`;
-    const widths = chips.map((c) => a.measureText(c).width + 28);
-    const rows = [[]]; let rw = 0;                 // wrap the chips into centred rows that fit the screen
-    widths.forEach((w, i) => { if (rows.at(-1).length && rw + w > W - 32) { rows.push([]); rw = 0; } rows.at(-1).push(i); rw += w + 10; });
-    rows.forEach((r, ri) => {
-      const yc = y0 + ch + 30 + ri * 44; if (yc + 34 > H - 6 * S - 40) return;
-      let x = cx - (r.reduce((s, i) => s + widths[i] + 10, -10)) / 2;
-      r.forEach((i) => { rr(x, yc, widths[i], 34, 17, cols[i]); a.fillStyle = '#fff'; a.fillText(chips[i], x + widths[i] / 2, yc + 22); x += widths[i] + 10; });
-    });
-
-    // sample into blocks
-    const px = a.getImageData(0, 0, W, H).data;
-    cells = new Uint32Array(GW * GH); solid = new Uint8Array(GW * GH); total = 0;
-    for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) {
-      const sx = Math.min(W - 1, gx * S + 1), sy = Math.min(H - 1, gy * S + 1), o = (sy * W + sx) * 4;
-      if (px[o + 3] > 110) { const i = gy * GW + gx; solid[i] = 1; cells[i] = px[o] | (px[o + 1] << 8) | (px[o + 2] << 16); total++; }
-    }
-    // indestructible floor
-    for (let gy = GH - 6; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) { const i = gy * GW + gx; solid[i] = 2; cells[i] = gy === GH - 6 ? 0x2a1715 : 0x3a2a26; }
-    img = gctx.createImageData(GW, GH);
-    paintAll();
-    player.x = 40; player.y = (GH - 6) * S - player.h - 1; player.vx = player.vy = 0;
-    parts.length = 0; destroyed = 0; won = false; updateMeter();
+  // live profile data from the public GitHub API; README HTML is sanitised before it is shown
+  function clean(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script,iframe,object,embed,style,link,meta,form').forEach((n) => n.remove());
+    doc.querySelectorAll('*').forEach((n) => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || (/^(href|src)$/i.test(a.name) && /^\s*javascript:/i.test(a.value))) n.removeAttribute(a.name); });
+    // our own profile's SVG art is served from this site, since raw.githubusercontent serves SVG as text
+    doc.querySelectorAll('img').forEach((im) => { const s = im.getAttribute('src') || ''; const m = s.match(/Singhaarav059\/Singhaarav059\/(?:raw\/)?(?:main|HEAD)\/assets\/([\w-]+\.svg)/); if (m) im.src = new URL('../assets/' + m[1], location.href).href; im.loading = 'eager'; });
+    return doc.body.innerHTML;
   }
-
-  function paintCell(i) {
-    const o = i * 4, d = img.data;
-    if (solid[i]) { const c = cells[i]; d[o] = c & 255; d[o + 1] = (c >> 8) & 255; d[o + 2] = (c >> 16) & 255; }
-    else { d[o] = BG[0]; d[o + 1] = BG[1]; d[o + 2] = BG[2]; }
-    d[o + 3] = 255;
-  }
-  function paintAll() { for (let i = 0; i < GW * GH; i++) paintCell(i); dirty = true; }
-
-  const isSolid = (x, y) => { const gx = Math.floor(x / S), gy = Math.floor(y / S); if (gx < 0 || gx >= GW) return true; if (gy < 0) return false; if (gy >= GH) return true; return solid[gy * GW + gx] > 0; };
-
-  // ---------- destruction ----------
-  let destroyed = 0, won = false, dirty = true, shake = 0;
-  const parts = [];
-  function blast(x, y, r, power) {
-    const gx0 = Math.floor((x - r) / S), gx1 = Math.floor((x + r) / S), gy0 = Math.floor((y - r) / S), gy1 = Math.floor((y + r) / S);
-    for (let gy = gy0; gy <= gy1; gy++) for (let gx = gx0; gx <= gx1; gx++) {
-      if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) continue;
-      const i = gy * GW + gx; if (solid[i] !== 1) continue;
-      const dx = gx * S + S / 2 - x, dy = gy * S + S / 2 - y, d = Math.hypot(dx, dy);
-      if (d > r) continue;
-      solid[i] = 0; destroyed++; paintCell(i);
-      if (parts.length < 2600 && Math.random() < (power > 1 ? .55 : .8)) {
-        const k = (power * 2.2 * (1 - d / r) + .6) / (d + 1);
-        parts.push({ x: gx * S, y: gy * S, vx: dx * k + (Math.random() - .5) * 2, vy: dy * k - Math.random() * 2.5 * power, c: cells[i], life: 160 + Math.random() * 120 });
-      }
-    }
-    dirty = true; shake = Math.min(10, shake + power * 2.4); updateMeter();
-  }
-  function updateMeter() {
-    const p = total ? destroyed / total : 0;
-    pct.textContent = Math.floor(p * 100) + '%'; bar.style.width = (p * 100).toFixed(1) + '%';
-    if (!won && p >= .8) { won = true; say('Profile destroyed', 'Press R or Rebuild to put it back'); }
-  }
-  let toastT;
-  function say(t, s) { toast.innerHTML = t + (s ? `<small>${s}</small>` : ''); toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toast.classList.remove('on'), 2600); }
-
-  // ---------- player ----------
-  const player = { x: 40, y: 0, w: 12, h: 30, vx: 0, vy: 0, ground: false, face: 1, t: 0 };
-  const keys = {}; let aimX = 400, aimY = 300, firing = false, fireCd = 0, recoil = 0;
-  const bullets = [], bombs = [];
-
-  function collide(nx, ny) {
-    for (let y = ny; y < ny + player.h; y += S) for (let x = nx; x < nx + player.w; x += S) if (isSolid(x, y)) return true;
-    return isSolid(nx + player.w - 1, ny + player.h - 1) || isSolid(nx, ny + player.h - 1) || isSolid(nx + player.w - 1, ny);
-  }
-  function stepPlayer(dt) {
-    const acc = player.ground ? 0.9 : 0.5, max = 3.6;
-    const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-    if (dir) player.vx += dir * acc * dt; else player.vx *= player.ground ? 0.72 : 0.95;
-    player.vx = Math.max(-max, Math.min(max, player.vx));
-    if (keys.jump && player.ground) { player.vy = -7.6; player.ground = false; }
-    player.vy = Math.min(12, player.vy + 0.38 * dt);
-    // horizontal, with a step-up of up to 2 blocks so small rubble does not stop you
-    let nx = player.x + player.vx * dt;
-    if (collide(nx, player.y)) {
-      let climbed = false;
-      for (let up = S; up <= S * 2; up += S) if (!collide(nx, player.y - up)) { player.y -= up; climbed = true; break; }
-      if (!climbed) { while (!collide(player.x + Math.sign(player.vx), player.y) && Math.abs(nx - player.x) >= 1) player.x += Math.sign(player.vx); player.vx = 0; nx = player.x; }
-    }
-    player.x = Math.max(0, Math.min(W - player.w, nx));
-    let ny = player.y + player.vy * dt; player.ground = false;
-    if (collide(player.x, ny)) {
-      const s = Math.sign(player.vy);
-      while (!collide(player.x, player.y + s)) player.y += s;
-      if (s > 0) player.ground = true;
-      player.vy = 0;
-    } else player.y = ny;
-    if (player.y > H) { player.y = 0; }
-    player.face = aimX >= player.x + player.w / 2 ? 1 : -1;
-    player.t += Math.abs(player.vx) * dt * 0.12;
-  }
-
-  function gunTip() {
-    const sx = player.x + player.w / 2, sy = player.y + 11, a = Math.atan2(aimY - sy, aimX - sx);
-    return { x: sx + Math.cos(a) * 16, y: sy + Math.sin(a) * 16, a };
-  }
-  function shoot() {
-    const g = gunTip(), a = g.a + (Math.random() - .5) * 0.07;
-    bullets.push({ x: g.x, y: g.y, vx: Math.cos(a) * 16, vy: Math.sin(a) * 16, life: 90 });
-    recoil = 3; fireCd = 5;
-  }
-  function throwBomb() {
-    const g = gunTip();
-    bombs.push({ x: g.x, y: g.y, vx: Math.cos(g.a) * 7 + player.vx, vy: Math.sin(g.a) * 7 - 2, fuse: 70 });
-  }
-
-  // ---------- loop ----------
-  let last = performance.now();
-  function frame(now) {
-    const dt = Math.min(2.5, (now - last) / 16.667); last = now;
-    stepPlayer(dt);
-    fireCd -= dt; recoil *= 0.7;
-    if (firing && fireCd <= 0) shoot();
-    for (let i = bullets.length - 1; i >= 0; i--) {
-      const b = bullets[i]; let hit = false;
-      for (let s = 0; s < 4 && !hit; s++) { b.x += b.vx * dt / 4; b.y += b.vy * dt / 4; if (isSolid(b.x, b.y) && b.y < (GH - 6) * S) { blast(b.x, b.y, 9, 1); hit = true; } }
-      if (hit || (b.life -= dt) < 0 || b.x < 0 || b.x > W || b.y < 0 || b.y > H) bullets.splice(i, 1);
-    }
-    for (let i = bombs.length - 1; i >= 0; i--) {
-      const b = bombs[i]; b.vy += 0.3 * dt;
-      const nx = b.x + b.vx * dt, ny = b.y + b.vy * dt;
-      if (isSolid(nx, b.y)) b.vx *= -0.45; else b.x = nx;
-      if (isSolid(b.x, ny)) { b.vy *= -0.4; b.vx *= 0.8; } else b.y = ny;
-      if ((b.fuse -= dt) <= 0) { blast(b.x, b.y, 46, 3); bombs.splice(i, 1); }
-    }
-    for (let i = parts.length - 1; i >= 0; i--) {
-      const p = parts[i]; p.vy += 0.3 * dt; p.vx *= 0.995;
-      const nx = p.x + p.vx * dt, ny = p.y + p.vy * dt;
-      if (isSolid(nx, p.y)) p.vx *= -0.3; else p.x = nx;
-      if (isSolid(p.x, ny)) { p.vy *= -0.25; p.vx *= 0.7; } else p.y = ny;
-      if ((p.life -= dt) < 0 || p.y > H) parts.splice(i, 1);
-    }
-    draw();
-    requestAnimationFrame(frame);
-  }
-
-  function draw() {
-    if (dirty) { gctx.putImageData(img, 0, 0); dirty = false; }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    shake *= 0.85;
-    const ox = (Math.random() - .5) * shake, oy = (Math.random() - .5) * shake;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(grid, ox, oy, GW * S, GH * S);
-    ctx.translate(ox, oy);
-    // debris
-    for (const p of parts) { const c = p.c; ctx.fillStyle = `rgb(${c & 255},${(c >> 8) & 255},${(c >> 16) & 255})`; ctx.globalAlpha = Math.min(1, p.life / 40); ctx.fillRect(p.x, p.y, S, S); }
-    ctx.globalAlpha = 1;
-    // bullets
-    ctx.fillStyle = '#ffb020';
-    for (const b of bullets) { ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx)); ctx.fillRect(-6, -1, 10, 2); ctx.restore(); }
-    // bombs
-    for (const b of bombs) { ctx.fillStyle = '#15172a'; ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, 7); ctx.fill(); ctx.fillStyle = (b.fuse | 0) % 10 < 5 ? '#ff5d73' : '#ffb020'; ctx.fillRect(b.x - 1, b.y - 8, 2, 3); }
-    drawStick();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-  }
-
-  function drawStick() {
-    const p = player, cx = Math.round(p.x + p.w / 2), top = Math.round(p.y);
-    const hip = top + 20, neck = top + 9, f = p.face;
-    const swing = p.ground ? Math.sin(p.t) * 0.7 * Math.min(1, Math.abs(p.vx) / 2) : 0.5;
-    ctx.strokeStyle = '#15172a'; ctx.lineWidth = 3; ctx.lineCap = 'square';
-    ctx.beginPath();
-    // legs
-    ctx.moveTo(cx, hip); ctx.lineTo(cx + Math.sin(swing) * 8, top + 30);
-    ctx.moveTo(cx, hip); ctx.lineTo(cx - Math.sin(swing) * 8, top + 30);
-    // body
-    ctx.moveTo(cx, neck); ctx.lineTo(cx, hip);
-    ctx.stroke();
-    // head
-    ctx.fillStyle = '#15172a'; ctx.fillRect(cx - 4, top, 8, 8);
-    ctx.fillStyle = '#fff'; ctx.fillRect(cx + (f > 0 ? 1 : -3), top + 3, 2, 2);
-    // arms + gun toward the cursor
-    const sx = cx, sy = top + 11, a = Math.atan2(aimY - sy, aimX - sx), rc = recoil;
-    ctx.save(); ctx.translate(sx, sy); ctx.rotate(a);
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10 - rc, 0); ctx.stroke();
-    ctx.fillStyle = '#2b2f4a'; ctx.fillRect(8 - rc, -3, 10, 4); ctx.fillRect(10 - rc, 1, 3, 4);
-    if (firing && fireCd > 3) { ctx.fillStyle = '#ffb020'; ctx.fillRect(18 - rc, -3, 4, 4); }
-    ctx.restore();
-  }
-
-  // ---------- input ----------
-  const map = { KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', KeyW: 'jump', ArrowUp: 'jump', Space: 'jump' };
-  addEventListener('keydown', (e) => {
-    if (map[e.code]) { keys[map[e.code]] = true; e.preventDefault(); }
-    if (e.code === 'KeyQ' || e.code === 'KeyE') throwBomb();
-    if (e.code === 'KeyR') buildLevel();
-  });
-  addEventListener('keyup', (e) => { if (map[e.code]) keys[map[e.code]] = false; });
-  cv.addEventListener('contextmenu', (e) => e.preventDefault());
-  cv.addEventListener('pointermove', (e) => { aimX = e.clientX; aimY = e.clientY; });
-  cv.addEventListener('pointerdown', (e) => { aimX = e.clientX; aimY = e.clientY; if (e.button === 2) throwBomb(); else { firing = true; if (fireCd <= 0) shoot(); } });
-  addEventListener('pointerup', () => (firing = false));
-  addEventListener('blur', () => { firing = false; for (const k in keys) keys[k] = false; });
-  document.querySelectorAll('.touch button').forEach((b) => {
-    const k = b.dataset.k;
-    b.addEventListener('pointerdown', (e) => { e.stopPropagation(); if (k === 'bomb') throwBomb(); else keys[k] = true; });
-    const up = () => { if (k !== 'bomb') keys[k] = false; };
-    b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
-  });
-  document.getElementById('reset').addEventListener('click', (e) => { e.currentTarget.blur(); buildLevel(); });
-  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(buildLevel, 200); });
-
-  // canvas text only triggers a font download when first drawn, so load the faces explicitly before building
-  const faces = ['900 110px Urbanist', '700 34px Urbanist', '500 14px Urbanist'];
-  Promise.race([Promise.all(faces.map((f) => document.fonts.load(f))), new Promise((r) => setTimeout(r, 2500))]).catch(() => {}).then(() => {
-    buildLevel();
-    say('Destroy this profile', matchMedia('(pointer: coarse)').matches ? 'Tap to shoot · ✹ for bombs' : 'Click to shoot · Q for bombs');
-    requestAnimationFrame((t) => { last = t; frame(t); });
+  const api = (p, accept) => fetch('https://api.github.com' + p, { headers: { Accept: accept || 'application/vnd.github+json' } }).then((r) => (r.ok ? (accept ? r.text() : r.json()) : Promise.reject(r.status)));
+  document.title = `Wreck ${user} · GitHub profile`;
+  $('title').textContent = user.toLowerCase() === 'singhaarav059' ? 'Wreck this profile' : `Wreck @${user}`;
+  Promise.all([
+    api('/users/' + user),
+    api(`/users/${user}/repos?per_page=100&sort=pushed`).catch(() => []),
+    api(`/repos/${user}/${user}/readme`, 'application/vnd.github.html+json').catch(() => ''),
+  ]).then(([u, repos, readme]) => {
+    $('crumb').textContent = u.login; $('av').src = u.avatar_url + '&s=460'; $('name').textContent = u.name || u.login; $('login').textContent = u.login;
+    $('bio').textContent = u.bio || ''; $('nrepos').textContent = u.public_repos;
+    $('followers').innerHTML = `<b>${u.followers}</b> followers · <b>${u.following}</b> following`;
+    $('loc').textContent = u.location || ''; $('blog').innerHTML = u.blog ? `<a href="${esc(/^https?:/.test(u.blog) ? u.blog : 'https://' + u.blog)}">${esc(u.blog.replace(/^https?:\/\//, ''))}</a>` : '';
+    $('path').textContent = `${u.login} / README.md`;
+    if (readme) $('readme').innerHTML = clean(readme); else $('readme').closest('.box').style.display = 'none';
+    const list = (Array.isArray(repos) ? repos : []).filter((r) => !r.fork && r.name.toLowerCase() !== u.login.toLowerCase()).sort((a, b) => b.stargazers_count - a.stargazers_count || (b.pushed_at > a.pushed_at ? 1 : -1)).slice(0, 6);
+    $('repos').innerHTML = list.map((r) => `<div class="repo"><div class="nm"><a href="${esc(r.html_url)}">${esc(r.name)}</a><span class="vis">${r.archived ? 'Public archive' : 'Public'}</span></div><p>${esc(r.description || '')}</p><div class="lang">${r.language ? `<span><i class="dot" style="background:${LANG[r.language] || '#8b949e'}"></i>${esc(r.language)}</span>` : ''}${r.stargazers_count ? `<span>★ ${r.stargazers_count}</span>` : ''}</div></div>`).join('');
+  }).catch((e) => {
+    $('note').textContent = e === 404 ? `There is no GitHub user called ${user}.` : 'GitHub did not answer (its API allows 60 requests an hour per visitor). The page below is still yours to wreck.';
+    $('bio').textContent = 'Creative developer · scroll-driven 3D websites in three.js and React Three Fiber';
+    $('readme').innerHTML = '<h1>Aarav Singh</h1><p>I build scroll-driven 3D websites: real-time scenes, one camera, every section told in WebGL.</p>';
   });
 })();
 </script>

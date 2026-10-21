@@ -9,7 +9,7 @@ A 3D scroll story built in React Three Fiber, tuned to stay smooth on mid-range 
 ### Play
 
 <p>
-  <a href="https://singhaarav059.github.io/Singhaarav059/destroy/"><img src="assets/card-destroy.svg" width="49%" alt="Destroy this profile: play now" /></a>
+  <a href="https://singhaarav059.github.io/Singhaarav059/destroy/"><img src="assets/card-destroy.svg" width="49%" alt="Wreck this profile: play now" /></a>
   <a href="https://singhaarav059.github.io/Singhaarav059/tictactoe/"><img src="assets/card-ttt.svg" width="49%" alt="Tic-tac-toe: play now" /></a>
 </p>
 

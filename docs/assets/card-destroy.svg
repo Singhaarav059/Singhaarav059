@@ -22,7 +22,7 @@
 <rect x=".5" y=".5" width="579" height="239" rx="23.5" fill="none" stroke="#15172a" stroke-opacity=".1"/>
 <g font-family="'Segoe UI', Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <text x="32" y="150" font-size="30" font-weight="800" fill="#15172a" letter-spacing="-.5">Wreck this profile</text>
-<text x="32" y="180" font-size="16" fill="#6b7088">Ten weapons, a jetpack and a black hole.</text>
+<text x="32" y="180" font-size="16" fill="#6b7088">Ten weapons. Solo or online with friends.</text>
 <g class="btn"><rect x="32" y="196" width="108" height="30" rx="15" fill="#15172a"/><text x="86" y="216" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">Play now →</text></g>
 </g>
 </svg>

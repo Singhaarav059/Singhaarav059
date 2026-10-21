@@ -55,6 +55,20 @@
   .panel p { color: #59607a; margin: 6px 0 18px; font-size: 15px; }
   .play { width: 100%; font: inherit; font-size: 18px; font-weight: 900; color: #fff; background: var(--ink); border: 0; border-radius: 14px; padding: 14px; cursor: pointer; }
   .play:hover { background: #2b2f4a; }
+  .online input, .roomcode b { font: inherit; }
+  #pname { width: 100%; font-size: 15px; border: 1px solid #d1d5e2; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .row2 { display: flex; gap: 8px; margin-bottom: 8px; }
+  .btn2 { flex: 1; font: inherit; font-weight: 800; font-size: 14px; border: 1px solid #d1d5e2; border-bottom-width: 3px; background: #fff; border-radius: 12px; padding: 10px; cursor: pointer; color: var(--ink); }
+  .btn2.hot { background: #ff5d73; color: #fff; border-color: #e0465d; }
+  .btn2:disabled, .play:disabled { opacity: .55; cursor: wait; }
+  .status { min-height: 18px; font-size: 13px; color: #c2334a; margin-top: 8px; }
+  .roomcode { display: flex; align-items: center; gap: 10px; }
+  .roomcode b { font-size: 28px; font-weight: 900; letter-spacing: .12em; }
+  .plist { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; }
+  .plist li { display: flex; align-items: center; gap: 8px; background: #f4f6fb; border-radius: 10px; padding: 8px 10px; font-weight: 700; }
+  .plist i { width: 12px; height: 12px; border-radius: 50%; }
+  .plist em { margin-left: auto; font-style: normal; font-size: 12px; color: #6b7088; }
+  .wait { text-align: center; color: #6b7088; }
   .lbl { font-size: 12px; font-weight: 800; color: #6b7088; margin: 18px 0 8px; letter-spacing: .02em; }
   .skins { display: flex; gap: 8px; }
   .skins button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px #d1d5e2; cursor: pointer; }
@@ -101,9 +115,28 @@
   <div class="panel">
     <h2 id="title">Wreck this profile</h2>
     <p>The page is the ground. Dig through it, knock its letters off and blow its boxes loose with ten weapons.</p>
-    <button class="play" id="play">Play</button>
-    <div class="lbl">SCARF</div>
+    <div id="solo">
+    <button class="play" id="play">Play solo</button>
+    <div class="lbl">COLOUR</div>
     <div class="skins" id="skins"></div>
+    <div class="lbl">PLAY ONLINE · UP TO 8 PLAYERS</div>
+    <div class="online">
+      <input id="pname" maxlength="16" placeholder="Your name" autocomplete="off" spellcheck="false" />
+      <div class="row2"><button id="quick" class="btn2 hot">Quick match</button><button id="create" class="btn2">Create room</button></div>
+      <form class="who" id="joinf"><input name="c" maxlength="6" placeholder="Room code" autocomplete="off" spellcheck="false" style="text-transform:uppercase" /><button>Join</button></form>
+      <div class="status" id="status" aria-live="polite"></div>
+    </div>
+    </div>
+    <div id="lobby" hidden>
+      <div class="lbl">ROOM</div>
+      <div class="roomcode"><b id="code">······</b><button id="copy" class="btn2">Copy invite link</button></div>
+      <div class="lbl">PLAYERS</div>
+      <ul class="plist" id="plist"></ul>
+      <button class="play" id="go">Start</button>
+      <p class="wait" id="wait" hidden>Waiting for the host to start.</p>
+      <div class="status" id="status2" aria-live="polite"></div>
+      <button id="leave" class="btn2" style="width:100%;margin-top:10px">Leave room</button>
+    </div>
     <div class="lbl">DESTROY ANOTHER GITHUB PROFILE</div>
     <form class="who" id="who"><input name="u" placeholder="GitHub username, e.g. torvalds" autocomplete="off" spellcheck="false" /><button>Load</button></form>
     <div class="lbl bm-l">DESTROY ANY WEBSITE</div>
@@ -115,6 +148,8 @@
 </div>
 
 <script src="engine.js" data-auto="off"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
+<script src="net.js"></script>
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -134,9 +169,43 @@
   SKINS.forEach((c) => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', 'Scarf colour'); b.setAttribute('aria-pressed', c === skin); b.onclick = () => { skin = c; try { localStorage.setItem('wreck-skin', c); } catch {} [...$('skins').children].forEach((x) => x.setAttribute('aria-pressed', x === b)); }; $('skins').appendChild(b); });
 
   $('who').addEventListener('submit', (e) => { e.preventDefault(); const u = e.target.u.value.trim(); if (u) location.search = '?user=' + encodeURIComponent(u); });
-  const startGame = () => { $('start').classList.add('hidden'); Wreck.skin = skin; Wreck.start(); };
+  // every player lays the page out at the same width online, so everyone gets the same level
+  const pin = (on) => { document.documentElement.style.width = on ? '1280px' : ''; document.body.style.width = on ? '1280px' : ''; };
+  const startGame = () => { $('start').classList.add('hidden'); Wreck.skin = skin; pin(WreckNet.inRoom); requestAnimationFrame(() => Wreck.start()); };
   $('play').addEventListener('click', startGame);
-  Wreck.onExit = () => $('start').classList.remove('hidden');
+  Wreck.onExit = () => { pin(false); $('start').classList.remove('hidden'); };
+
+  // online
+  let name = ''; try { name = localStorage.getItem('wreck-name') || ''; } catch {}
+  $('pname').value = name || 'Stickman' + ((Math.random() * 900 + 100) | 0);
+  const self = () => { const n = $('pname').value.trim() || 'Stickman'; try { localStorage.setItem('wreck-name', n); } catch {} return { name: n, skin }; };
+  const busy = (b, text) => { ['quick', 'create'].forEach((id) => ($(id).disabled = b)); $('status').style.color = b ? '#6b7088' : '#c2334a'; $('status').textContent = text || ''; };
+  const why = (e) => ({ full: 'This room is full.', 'peer-unavailable': 'No room with that code.', busy: 'Every quick-match room is full. Try again in a moment.', timeout: 'Could not reach the matchmaking service. Try again.' }[e?.message] || { 'peer-unavailable': 'No room with that code.', network: 'Network problem. Check your connection.', 'browser-incompatible': 'This browser cannot play online.' }[e?.type] || 'Could not connect. Try again.');
+  const showLobby = (on) => { $('solo').hidden = on; $('lobby').hidden = !on; };
+  WreckNet.init({
+    level: user.toLowerCase(),
+    ui: {
+      status: (t) => { $('status').textContent = t; $('status2').textContent = t; },
+      lobby: (players, info) => {
+        showLobby(true); $('code').textContent = info.room;
+        $('plist').innerHTML = '';
+        players.forEach((p, i) => { const li = document.createElement('li'); const dot = document.createElement('i'); dot.style.background = p.skin; li.append(dot, document.createTextNode(p.name)); if (i === 0) { const em = document.createElement('em'); em.textContent = 'host'; li.append(em); } $('plist').append(li); });
+        $('go').hidden = !info.isHost; $('wait').hidden = info.isHost;
+        $('go').textContent = players.length > 1 ? `Start with ${players.length} players` : 'Start (others can drop in)';
+      },
+      start: () => startGame(),
+      left: () => { showLobby(false); busy(false, $('status').textContent); if (Wreck.running) { Wreck.stop(); } },
+    },
+  });
+  const run = async (fn) => { busy(true, 'Connecting…'); try { await fn(); busy(false); } catch (e) { busy(false, why(e)); } };
+  $('quick').onclick = () => run(() => WreckNet.quick(self()));
+  $('create').onclick = () => run(() => WreckNet.create(self()));
+  $('joinf').addEventListener('submit', (e) => { e.preventDefault(); const c = e.target.c.value.trim().toUpperCase(); if (!/^[A-Z0-9]{6}$/.test(c)) return busy(false, 'Room codes have 6 letters and digits.'); run(() => WreckNet.join(c, self())); });
+  $('go').onclick = () => WreckNet.start();
+  $('leave').onclick = () => WreckNet.leave();
+  $('copy').onclick = async () => { const u = `${location.origin}${location.pathname}?user=${encodeURIComponent(user)}&room=${WreckNet.room}`; try { await navigator.clipboard.writeText(u); $('copy').textContent = 'Link copied'; } catch { prompt('Copy this invite link', u); } setTimeout(() => ($('copy').textContent = 'Copy invite link'), 1600); };
+  const invite = (params.get('room') || '').toUpperCase();
+  if (/^[A-Z0-9]{6}$/.test(invite) || /^QUICK\d$/.test(invite)) run(() => WreckNet.join(invite, self()));
 
   // live profile data from the public GitHub API; README HTML is sanitised before it is shown
   function clean(html) {

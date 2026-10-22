@@ -831,7 +831,28 @@
     { id: 'phantom', name: 'Phantom', rank: 7, plate: '#2a2d40' },
     { id: 'juggernaut', name: 'Juggernaut', rank: 9 },
     { id: 'golden', name: 'Golden', rank: 11, plate: '#e2a93b' },
+    // Map Masters: destroy half of a map in one game
+    { id: 'islander', name: 'Islander', pack: 'maps', req: { map: 'isles', pct: 50 }, plate: '#3fae6a' },
+    { id: 'spelunker', name: 'Spelunker', pack: 'maps', req: { map: 'caverns', pct: 50 } },
+    { id: 'neon', name: 'Neon', pack: 'maps', req: { map: 'rooftops', pct: 50 }, plate: '#1b1d2e' },
+    { id: 'frost', name: 'Frost', pack: 'maps', req: { map: 'peak', pct: 50 }, plate: '#9fd8ff' },
+    { id: 'chip', name: 'Chip', pack: 'maps', req: { map: 'circuit', pct: 50 }, plate: '#1f8f5a' },
+    { id: 'ember', name: 'Ember', pack: 'maps', req: { map: 'forge', pct: 50 }, plate: '#2a2333' },
+    // Daily Grind: complete daily challenges
+    { id: 'hazard', name: 'Hazard', pack: 'daily', req: { daily: 3 }, plate: '#ffcc33' },
+    { id: 'medic', name: 'Medic', pack: 'daily', req: { daily: 7 }, plate: '#e9edf7' },
+    { id: 'commander', name: 'Commander', pack: 'daily', req: { daily: 15 }, plate: '#2b3a6b' },
+    // seasonal: play a game in the season to claim the pack for good
+    { id: 'pumpkin', name: 'Pumpkin', pack: 'spooky', req: { season: 'spooky' } },
+    { id: 'ghost', name: 'Ghost', pack: 'spooky', req: { season: 'spooky' }, plate: '#e6eaff' },
+    { id: 'bat', name: 'Bat', pack: 'spooky', req: { season: 'spooky' }, plate: '#2a2236' },
+    { id: 'snowman', name: 'Snowman', pack: 'winter', req: { season: 'winter' }, plate: '#f2f5ff' },
+    { id: 'antlers', name: 'Antlers', pack: 'winter', req: { season: 'winter' } },
+    { id: 'gift', name: 'Gift Box', pack: 'winter', req: { season: 'winter' } },
   ];
+  const PACKS = { rank: 'Ranked', maps: 'Map Masters', daily: 'Daily Grind', spooky: 'Spooky Season', winter: 'Winter' };
+  const SEASONS = { spooky: [[10, 15], [11, 7]], winter: [[12, 1], [1, 7]] };   // [month, day] from, to (inclusive)
+  const inSeason = (k, d = new Date()) => { const [[m1, d1], [m2, d2]] = SEASONS[k], v = (d.getUTCMonth() + 1) * 100 + d.getUTCDate(), a = m1 * 100 + d1, b = m2 * 100 + d2; return a <= b ? v >= a && v <= b : v >= a || v <= b; };
   const skinOf = (id) => SKINS.find((s) => s.id === id) || SKINS[0];
   function helmet(id, c, k) {
     const { base, b1, b2, b3, gm, gm1, gm2, glow, glow1 } = k;
@@ -843,6 +864,21 @@
     else if (id === 'astro') { Ef(c, '#e8ecf8', 9, 8, 7.5, 8); Pf(c, '#c3c9df', [[2, 9], [4, 14], [8, 16], [9, 14], [5, 11]]); Ef(c, '#e8b04a', 11, 8, 5, 4.5); Ef(c, '#b8822a', 10, 10, 3, 2); Rf(c, '#fff6c9', 12, 6, 3, 1); Rf(c, base, 3, 7, 2, 4); Rf(c, glow, 3, 8, 1, 1); Rf(c, '#ffffff', 7, 1, 3, 1); }
     else if (id === 'sentinel') { dome(); Pf(c, glow, [[4, 3], [8, -4], [11, -3], [8, 2]]); Pf(c, glow1, [[7, -2], [8, -4], [9, -3]]); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, glow, 10, 8, 6, 1); Pf(c, b2, [[12, 11], [16, 11], [15, 15], [12, 15]]); }
     else if (id === 'phantom') { dome(); Rf(c, '#ff3d7f', 11, 8, 2, 1); Rf(c, '#ff3d7f', 14, 8, 2, 1); Rf(c, '#ffb3cf', 11, 8, 1, 1); Rf(c, '#ffb3cf', 14, 8, 1, 1); Rf(c, b3, 6, 6, 1, 7); }
+    else if (id === 'islander') { dome(); Pf(c, '#7be39b', [[5, 2], [8, -4], [10, 0]]); Pf(c, '#2e9a58', [[8, 1], [12, -3], [12, 1]]); Ef(c, '#ff79c6', 13, 3, 1.5, 1.5); Rf(c, '#ffe066', 13, 3, 1, 1); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, '#b6ff7a', 10, 8, 6, 1); }
+    else if (id === 'spelunker') { dome(); Rf(c, gm, 3, 4, 13, 2); Rf(c, gm1, 12, 1, 4, 4); Rf(c, '#ffe066', 14, 2, 2, 2); Rf(c, '#fff6c9', 15, 2, 1, 1); Pf(c, gm2, [[9, 8], [16, 8], [16, 11], [10, 11]]); Rf(c, glow, 10, 9, 6, 1); }
+    else if (id === 'neon') { dome(); Pf(c, gm2, [[7, 6], [17, 6], [17, 11], [8, 11]]); Rf(c, glow, 8, 7, 9, 3); Rf(c, glow1, 12, 8, 4, 1); Rf(c, glow, 3, 12, 6, 1); }
+    else if (id === 'frost') { dome(); Pf(c, '#e6f7ff', [[4, 3], [5, -3], [7, 2]]); Pf(c, '#e6f7ff', [[8, 1], [10, -4], [11, 1]]); Pf(c, '#e6f7ff', [[12, 2], [15, -2], [14, 3]]); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, '#ffffff', 10, 8, 6, 1); }
+    else if (id === 'chip') { dome(); Rf(c, '#e8b04a', 5, 4, 6, 1); Rf(c, '#e8b04a', 10, 4, 1, 3); Rf(c, '#e8b04a', 4, 12, 4, 1); Rf(c, '#ffd27a', 4, 4, 1, 1); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, '#ffd27a', 10, 8, 6, 1); }
+    else if (id === 'ember') { dome(); Rf(c, '#ff7a3d', 5, 3, 1, 5); Rf(c, '#ff7a3d', 6, 7, 3, 1); Rf(c, '#ffb020', 12, 12, 1, 3); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, '#ffb020', 10, 8, 6, 1); Rf(c, '#fff6d0', 13, 8, 2, 1); }
+    else if (id === 'hazard') { dome(); for (let k = 0; k < 4; k++) Pf(c, '#1c1f2e', [[3 + k * 3, 14], [5 + k * 3, 14], [8 + k * 3, 4], [6 + k * 3, 4]]); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, '#ffffff', 10, 8, 6, 1); }
+    else if (id === 'medic') { dome(); Rf(c, '#2fd08a', 6, 2, 2, 6); Rf(c, '#2fd08a', 4, 4, 6, 2); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, '#9fd8ff', 10, 8, 6, 1); }
+    else if (id === 'commander') { dome(); Pf(c, '#e8b04a', [[3, 4], [9, -3], [15, 3], [13, 4], [9, 1], [5, 5]]); Rf(c, '#fff1b0', 8, -2, 2, 1); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, '#ffe066', 10, 8, 6, 1); }
+    else if (id === 'pumpkin') { Ef(c, '#ff8a3d', 9, 8, 8, 7.5); Ef(c, '#e06a1f', 6, 9, 4, 6); Rf(c, '#ffb070', 11, 2, 3, 2); Rf(c, '#2e9a58', 8, -2, 2, 3); Pf(c, '#2e9a58', [[9, -1], [13, -3], [12, 0]]); Pf(c, '#ffe066', [[10, 6], [13, 6], [11.5, 9]]); Pf(c, '#ffe066', [[14, 6], [16, 6], [15, 8.5]]); Pf(c, '#ffe066', [[9, 11], [16, 11], [15, 13], [13, 12], [11, 13], [10, 12]]); }
+    else if (id === 'ghost') { Pf(c, '#f4f6ff', [[3, 6], [6, 0], [12, 0], [16, 5], [16, 14], [14, 16], [12, 14], [10, 16], [8, 14], [5, 16], [3, 14]]); Rf(c, '#d5d9ea', 3, 8, 3, 6); Ef(c, '#1c1f2e', 11, 7, 1.5, 2); Ef(c, '#1c1f2e', 14.5, 7, 1.5, 2); Ef(c, '#1c1f2e', 13, 11, 1.5, 1.5); }
+    else if (id === 'bat') { dome(); Pf(c, base, [[4, 3], [3, -4], [7, 1]]); Pf(c, base, [[11, 1], [14, -4], [15, 3]]); Rf(c, b1, 13, -2, 1, 2); Rf(c, '#ff3d5e', 11, 8, 2, 1); Rf(c, '#ff3d5e', 14, 8, 2, 1); Rf(c, '#f4f6ff', 12, 12, 1, 2); Rf(c, '#f4f6ff', 14, 12, 1, 2); }
+    else if (id === 'snowman') { Ef(c, '#f2f5ff', 9, 9, 7, 7); Rf(c, '#1c1f2e', 4, -1, 11, 3); Rf(c, '#1c1f2e', 6, -5, 7, 5); Rf(c, '#ff5d73', 6, -1, 7, 1); Rf(c, '#1c1f2e', 11, 7, 2, 2); Rf(c, '#1c1f2e', 14, 7, 2, 2); Pf(c, '#ff8a3d', [[15, 10], [19, 11], [15, 12]]); Rf(c, '#1c1f2e', 11, 13, 1, 1); Rf(c, '#1c1f2e', 13, 14, 1, 1); }
+    else if (id === 'antlers') { dome(); const ant = '#8a6a4a'; Rf(c, '#9a8fb0', 5, -4, 1, 6); Rf(c, '#9a8fb0', 3, -3, 3, 1); Rf(c, '#9a8fb0', 11, -4, 1, 6); Rf(c, '#9a8fb0', 11, -3, 4, 1); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, glow, 10, 8, 6, 1); Ef(c, '#ff4d5e', 16, 11, 1.5, 1.5); }
+    else if (id === 'gift') { Rf(c, '#ff5d73', 3, 2, 14, 13); Rf(c, '#ff8a9a', 3, 2, 14, 2); Rf(c, '#ffe066', 9, 2, 2, 13); Rf(c, '#ffe066', 3, 7, 14, 2); Pf(c, '#ffe066', [[10, 2], [6, -3], [5, 1]]); Pf(c, '#ffe066', [[10, 2], [14, -3], [15, 1]]); Rf(c, '#1c1f2e', 12, 10, 2, 2); Rf(c, '#1c1f2e', 15, 10, 1, 2); }
     else if (id === 'juggernaut') { Pf(c, base, [[2, 3], [15, 2], [17, 6], [17, 14], [13, 16], [4, 16], [2, 12]]); Rf(c, b1, 3, 3, 13, 2); Rf(c, b2, 3, 7, 14, 2); Rf(c, gm2, 9, 9, 8, 2); Rf(c, glow, 10, 9, 6, 1); Rf(c, b2, 2, 12, 15, 2); Rf(c, gm1, 4, 13, 1, 1); Rf(c, gm1, 7, 13, 1, 1); Rf(c, gm1, 10, 13, 1, 1); }
     else { dome(); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, glow, 10, 8, 6, 1); Rf(c, glow1, 13, 8, 2, 1); Rf(c, b3, 6, 6, 1, 7); Rf(c, gm1, 4, 9, 2, 3); Rf(c, glow, 4, 10, 1, 1); Rf(c, b2, 12, 12, 3, 1); Rf(c, gm2, 13, 13, 2, 1); }
   }
@@ -1158,7 +1194,7 @@
     if (d.aim != null) { v.fillStyle = OUT; v.fillRect(x + Math.cos(d.aim) * 6 - 1, y + 3 + Math.sin(d.aim) * 3, 3, 3); }
   }
   function ik(ax, ay, tx, ty, l1, l2, s) { let dx = tx - ax, dy = ty - ay, d = Math.hypot(dx, dy); const m = l1 + l2 - 0.01; if (d > m) { dx *= m / d; dy *= m / d; d = m; } const a = Math.atan2(dy, dx), c = clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1), b = Math.acos(c) * s; return [ax + Math.cos(a - b) * l1, ay + Math.sin(a - b) * l1, ax + dx, ay + dy]; }
-  function drawPlayer(v, P = S.p, skin = Wreck.skin, name, suitId = Wreck.suit, rank) {
+  function drawPlayer(v, P = S.p, skin = Wreck.skin, name, suitId = unlocked(skinOf(Wreck.suit)) ? Wreck.suit : 'standard', rank) {
     if (P.shield > 0 && (S.frame >> 2) % 2) v.globalAlpha = 0.45;
     drawSuit(v, P, /^#[0-9a-f]{6}$/i.test(skin) ? skin : '#5b6bd6', suitId); v.globalAlpha = 1;
     if (P.hurtT > 0 && (S.frame >> 1) % 2) { v.globalCompositeOperation = 'lighter'; v.globalAlpha = 0.35; drawSuit(v, P, '#ff3040', suitId); v.globalAlpha = 1; v.globalCompositeOperation = 'source-over'; }
@@ -1259,7 +1295,7 @@
     }
     if (S.time > 12 || S.stats.shots > 30) S.hud.help.style.opacity = '0';
     for (const [m, xp] of [[0.25, 40], [0.5, 80]]) if (p >= m && !(S.miles || (S.miles = {}))[m]) { S.miles[m] = 1; S.cur = null; gainXP(xp); }
-    if ((S.frame & 31) === 0 && S.L.map) dailyBump('map', Math.floor(p * 100), { map: S.L.map, best: true });
+    if ((S.frame & 31) === 0 && S.L.map) { const pc = Math.floor(p * 100); dailyBump('map', pc, { map: S.L.map, best: true }); if (pc > (U.maps[S.L.map] || 0)) withUnlocks(() => { U.maps[S.L.map] = pc; }); }
     if (!S.done && p >= 0.7) { S.done = true; S.cur = null; gainXP(250); if (!S.L.map) dailyBump('wreck', 1); overlay('done'); }
     if (S.xpT > 0 && (S.xpT -= dt) <= 0) { S.xpBuf = 0; S.hud.xp.style.opacity = '0'; } else if (S.xpBuf) { S.hud.xp.textContent = `+${S.xpBuf} XP`; S.hud.xp.style.opacity = '1'; }
   }
@@ -1361,8 +1397,24 @@
     const cv = document.createElement('canvas'); cv.width = cv.height = size; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(s.cv, 0, 0, size, size);
     badges.set(k, cv); return cv;
   }
+  // pack unlocks: best map destruction, daily challenges completed, seasons claimed
+  const UNLOCK_KEY = 'wreck-unlocks';
+  let U = { maps: {}, daily: 0, seasons: {} }; try { U = { ...U, ...JSON.parse(localStorage.getItem(UNLOCK_KEY)) }; } catch {}
+  const saveU = () => { try { localStorage.setItem(UNLOCK_KEY, JSON.stringify(U)); } catch {} };
+  function unlocked(s) {
+    if (s.rank != null) return rankOf(xpTotal) >= s.rank;
+    const q = s.req; if (q.map) return (U.maps[q.map] || 0) >= q.pct; if (q.daily) return U.daily >= q.daily; if (q.season) return !!U.seasons[q.season]; return false;
+  }
+  const reqText = (s) => { if (s.rank != null) return RANKS[s.rank][0]; const q = s.req; if (q.map) return `${q.pct}% of ${MAPS[q.map].name}`; if (q.daily) return `${q.daily} dailies`; const [[m1, d1], [m2, d2]] = SEASONS[q.season], M = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']; return inSeason(q.season) ? 'Play to claim' : `${M[m1]} ${d1} – ${M[m2]} ${d2}`; };
+  // run a change and announce any suit it unlocks
+  function withUnlocks(change) {
+    const before = new Set(SKINS.filter(unlocked).map((s) => s.id)); change(); saveU();
+    const fresh = SKINS.filter((s) => unlocked(s) && !before.has(s.id));
+    if (fresh.length && S?.hud) { sfx('rank'); const d = document.createElement('div'); d.className = 'promo pn'; d.innerHTML = `<div><small>${PACKS[fresh[0].pack] || 'New'} pack</small><b></b><small>suit unlocked</small></div>`; d.querySelector('b').textContent = fresh.map((s) => s.name).join(', '); S.hud.root.appendChild(d); setTimeout(() => d.remove(), 3400); }
+    if (fresh.length) Wreck.onRank?.();
+  }
   Wreck.ranks = RANKS.map(([name, xp]) => ({ name, xp }));
-  Wreck.skins = SKINS.map((s) => ({ id: s.id, name: s.name, rank: s.rank }));
+  Object.defineProperty(Wreck, 'skins', { get: () => SKINS.map((s) => ({ id: s.id, name: s.name, rank: s.rank, pack: s.pack || 'rank', packName: PACKS[s.pack || 'rank'], unlocked: unlocked(s), req: reqText(s) })) });
   Wreck.progress = () => { const r = rankOf(xpTotal); return { xp: xpTotal, rank: r, name: RANKS[r][0], next: RANKS[r + 1] ? { name: RANKS[r + 1][0], xp: RANKS[r + 1][1] } : null, floor: RANKS[r][1] }; };
   Wreck.badge = badge;
   Wreck.suit = 'standard';
@@ -1401,6 +1453,7 @@
     if (changed) { try { localStorage.setItem(DAILY_KEY, JSON.stringify(st)); } catch {} Wreck.onDaily?.(); }
   }
   function dailyDone(c) {
+    withUnlocks(() => { U.daily = (U.daily || 0) + 1; });
     const cur = S.cur; S.cur = null; gainXP(c.xp); S.cur = cur; sfx('rank');
     const d = document.createElement('div'); d.className = 'promo pn'; d.innerHTML = `<div><small>Daily challenge complete</small><b>+${c.xp} XP</b><small></small></div>`; d.querySelectorAll('small')[1].textContent = c.label;
     S.hud.root.appendChild(d); setTimeout(() => d.remove(), 3200);
@@ -1547,6 +1600,7 @@
     document.documentElement.appendChild(cv); S.hud = buildHud(); resize();
     document.documentElement.style.overflow = 'hidden';
     bindInput(); setWeapon(S.p.weapon); labels();
+    setTimeout(() => S && withUnlocks(() => { for (const k of Object.keys(SEASONS)) if (inSeason(k)) U.seasons[k] = 1; }), 1200);   // playing in a season claims its pack
     if (Wreck.net) { S.hud.$('.room').style.display = ''; Wreck.roster(roster, Wreck.selfId); }
     let t0 = performance.now();
     const loop = (now) => {

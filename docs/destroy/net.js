@@ -12,7 +12,7 @@
   const players = new Map();          // id -> { id, name, skin }
   let ui = { status() {}, lobby() {}, start() {}, left() {} };
 
-  const SUITS = new Set(['standard', 'ronin', 'diver', 'robot', 'astro', 'sentinel', 'phantom', 'juggernaut', 'golden']);
+  const SUITS = new Set(['standard', 'ronin', 'diver', 'robot', 'astro', 'sentinel', 'phantom', 'juggernaut', 'golden', 'islander', 'spelunker', 'neon', 'frost', 'chip', 'ember', 'hazard', 'medic', 'commander', 'pumpkin', 'ghost', 'bat', 'snowman', 'antlers', 'gift']);
   const look = (p) => ({ suit: SUITS.has(p.suit) ? p.suit : 'standard', rank: Number.isInteger(p.rank) && p.rank >= 0 && p.rank < 12 ? p.rank : 0 });
   const cleanName = (s) => String(s || '').replace(/[^\p{L}\p{N} _.-]/gu, '').trim().slice(0, 16) || 'Player';
   const code = () => Array.from({ length: 6 }, () => ALPHA[(Math.random() * ALPHA.length) | 0]).join('');

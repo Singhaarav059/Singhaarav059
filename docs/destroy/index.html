@@ -93,11 +93,12 @@
   .rk { flex: 1; } .rk b { font-weight: 400; color: #ffe066; font-size: 15px; } .rk small { display: block; color: #a4a8c8; font-size: 10px; margin-top: 4px; }
   .xpbar { height: 8px; background: #07080f; margin-top: 6px; } .xpbar i { display: block; height: 100%; width: 0; background: repeating-linear-gradient(90deg, #ffe066 0 5px, #ffb020 5px 7px); }
   .suits { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; }
+  .suits .ph { grid-column: 1 / -1; font-size: 10px; color: #e9eaf5; margin-top: 6px; border-bottom: 2px solid #07080f; padding-bottom: 3px; } .suits .ph small { float: right; color: #a4a8c8; font-size: 9px; }
   .suits button { position: relative; padding: 0; border: 2px solid #07080f; border-radius: 3px; background: #141526; cursor: pointer; aspect-ratio: 3 / 4; }
   .suits button canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
   .suits button span { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px; font: 8px Silkscreen, monospace; color: #e9eaf5; background: rgba(7,8,15,.75); }
   .suits button.locked canvas { filter: brightness(.25) grayscale(1); } .suits button.locked { cursor: not-allowed; }
-  .suits button.locked em { position: absolute; inset: 30% 0 auto; font: 8px Silkscreen, monospace; font-style: normal; color: #ffe066; text-align: center; }
+  .suits button.locked em { position: absolute; inset: 26% 3px auto; font: 7px/1.4 Silkscreen, monospace; font-style: normal; color: #ffe066; text-align: center; }
   .suits button[aria-pressed="true"] { outline: 3px solid #ffe066; outline-offset: 1px; }
   .dl span { float: right; color: #a4a8c8; }
   .daily { display: grid; gap: 6px; }
@@ -226,13 +227,14 @@
     const bc = $('badge').getContext('2d'); bc.imageSmoothingEnabled = false; bc.clearRect(0, 0, 40, 40); bc.drawImage(Wreck.badge(pr.rank, 40), 0, 0);
     $('xpfill').style.width = pr.next ? ((pr.xp - pr.floor) / (pr.next.xp - pr.floor) * 100).toFixed(1) + '%' : '100%';
     $('rnext').textContent = pr.next ? `${pr.xp.toLocaleString()} XP · ${pr.next.name} at ${pr.next.xp.toLocaleString()}` : `${pr.xp.toLocaleString()} XP · top rank`;
-    [...$('suits').children].forEach((b) => { const s = Wreck.skins.find((x) => x.id === b.dataset.id), lock = s.rank > pr.rank; b.classList.toggle('locked', lock); b.querySelector('em').textContent = lock ? Wreck.ranks[s.rank].name : ''; b.title = lock ? `${s.name}: unlocks at ${Wreck.ranks[s.rank].name}` : s.name; });
-    if (Wreck.skins.find((x) => x.id === Wreck.suit).rank > pr.rank) setSuit('standard');
+    const all = Wreck.skins; $('suits').querySelectorAll('button').forEach((b) => { const s = all.find((x) => x.id === b.dataset.id), lock = !s.unlocked; b.classList.toggle('locked', lock); b.querySelector('em').textContent = lock ? s.req : ''; b.title = lock ? `${s.name}: ${s.req}` : s.name; });
+    $('suits').querySelectorAll('.ph small').forEach((sm) => { const list = all.filter((x) => x.pack === sm.dataset.pack); sm.textContent = `${list.filter((x) => x.unlocked).length} / ${list.length}`; });
+    if (!all.find((x) => x.id === Wreck.suit)?.unlocked) setSuit('standard');
   }
-  function setSuit(id) { Wreck.suit = id; try { localStorage.setItem('wreck-suit-id', id); } catch {} [...$('suits').children].forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === id)); }
-  Wreck.skins.forEach((s) => { const b = document.createElement('button'); b.dataset.id = s.id; const cv = document.createElement('canvas'); cv.width = 60; cv.height = 80; const sp = document.createElement('span'); sp.textContent = s.name; b.append(cv, document.createElement('em'), sp); b.onclick = () => { if (!b.classList.contains('locked')) setSuit(s.id); }; $('suits').append(b); });
+  function setSuit(id) { Wreck.suit = id; try { localStorage.setItem('wreck-suit-id', id); } catch {} $('suits').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === id)); }
+  let lastPack = ''; Wreck.skins.forEach((s) => { if (s.pack !== lastPack) { lastPack = s.pack; const ph = document.createElement('div'); ph.className = 'ph'; ph.textContent = s.packName; const sm = document.createElement('small'); sm.dataset.pack = s.pack; ph.append(sm); $('suits').append(ph); } const b = document.createElement('button'); b.dataset.id = s.id; const cv = document.createElement('canvas'); cv.width = 60; cv.height = 80; const sp = document.createElement('span'); sp.textContent = s.name; b.append(cv, document.createElement('em'), sp); b.onclick = () => { if (!b.classList.contains('locked')) setSuit(s.id); }; $('suits').append(b); });
   let savedSuit = 'standard'; try { savedSuit = localStorage.getItem('wreck-suit-id') || 'standard'; } catch {}
-  setSuit(Wreck.skins.some((x) => x.id === savedSuit) ? savedSuit : 'standard'); renderRank();
+  setSuit(Wreck.skins.some((x) => x.id === savedSuit && x.unlocked) ? savedSuit : 'standard'); renderRank();
   Wreck.onRank = () => renderRank();
   function renderDaily() {
     const d = Wreck.daily(), mins = Math.max(1, Math.ceil((d.ends - Date.now()) / 60000));
@@ -247,7 +249,7 @@
   addEventListener('pointermove', (e) => (mouse = [e.clientX, e.clientY]));
   const sc = $('suit');
   let spinN = 0;
-  const spin = (t) => { if (!$('start').classList.contains('hidden')) { const r = sc.getBoundingClientRect(); Wreck.preview(sc, skin, t / 1000, Math.atan2(mouse[1] - (r.top + r.height * 0.6), mouse[0] - (r.left + r.width / 2)), 1, Wreck.suit); if (!(spinN++ % 20)) [...$('suits').children].forEach((b) => Wreck.preview(b.firstChild, skin, 0, -0.1, 1, b.dataset.id)); } requestAnimationFrame(spin); };
+  const spin = (t) => { if (!$('start').classList.contains('hidden')) { const r = sc.getBoundingClientRect(); Wreck.preview(sc, skin, t / 1000, Math.atan2(mouse[1] - (r.top + r.height * 0.6), mouse[0] - (r.left + r.width / 2)), 1, Wreck.suit); if (!(spinN++ % 20)) $('suits').querySelectorAll('button').forEach((b) => Wreck.preview(b.firstChild, skin, 0, -0.1, 1, b.dataset.id)); } requestAnimationFrame(spin); };
   requestAnimationFrame(spin);
   // maps: your profile (this page) or one of the built-in levels
   let mapId = (params.get('map') || '').replace(/[^a-z]/g, ''); if (!Wreck.maps.some((m) => m.id === mapId)) mapId = '';

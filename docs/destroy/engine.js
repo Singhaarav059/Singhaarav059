@@ -152,8 +152,12 @@
     for (let i = 0; i < nT; i++) { const cv = document.createElement('canvas'); cv.width = vw; cv.height = TILE; L.tiles.push({ cv, ctx: cv.getContext('2d') }); }
     L.MW = Math.ceil(vw / MC); L.MH = Math.ceil(WH / MC);
     L.mask = new Uint8Array(L.MW * L.MH);           // 0 air, 1 page, 2 rubble
-    L.mask.fill(1, Math.floor(SKY / MC) * L.MW);
-    L.total = L.MW * (L.MH - Math.floor(SKY / MC));
+    if (L.art) {   // a map: solid wherever it is painted
+      const d = L.art.getContext('2d').getImageData(0, 0, L.vw, WH).data; let n = 0;
+      for (let cy = 0; cy < L.MH; cy++) for (let cx = 0; cx < L.MW; cx++) { const x = Math.min(L.vw - 1, cx * MC + 1), y = Math.min(WH - 1, cy * MC + 1); if (d[(y * L.vw + x) * 4 + 3] > 100) { L.mask[cy * L.MW + cx] = 1; n++; } }
+      for (const b of L.boxes) for (let cy = Math.floor(b.y / MC); cy <= Math.floor((b.y + b.h) / MC); cy++) for (let cx = Math.floor(b.x / MC); cx <= Math.floor((b.x + b.w) / MC); cx++) if (cy >= 0 && cx >= 0 && cy < L.MH && cx < L.MW && !L.mask[cy * L.MW + cx]) { L.mask[cy * L.MW + cx] = 1; n++; }
+      L.total = Math.max(1, n);
+    } else { L.mask.fill(1, Math.floor(SKY / MC) * L.MW); L.total = L.MW * (L.MH - Math.floor(SKY / MC)); }
     L.gh = new Map(); L.bh = new Map();
     const add = (m, o) => { const x0 = Math.floor(o.x / CELL), x1 = Math.floor((o.x + o.w) / CELL), y0 = Math.floor(o.y / CELL), y1 = Math.floor((o.y + o.h) / CELL); for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) { const k = cy * 4096 + cx; let a = m.get(k); if (!a) m.set(k, (a = [])); a.push(o); } };
     L.glyphs.forEach((g) => add(L.gh, g)); L.boxes.forEach((b) => add(L.bh, b));
@@ -163,7 +167,8 @@
     const { ctx } = L.tiles[i], y0 = i * TILE;
     ctx.setTransform(1, 0, 0, 1, 0, -y0);
     ctx.clearRect(0, y0, L.vw, TILE);
-    if (y0 + TILE > SKY) { ctx.fillStyle = L.bg; ctx.fillRect(0, Math.max(SKY, y0), L.vw, TILE); }
+    if (L.art) ctx.drawImage(L.art, 0, 0);
+    else if (y0 + TILE > SKY) { ctx.fillStyle = L.bg; ctx.fillRect(0, Math.max(SKY, y0), L.vw, TILE); }
     for (const b of L.boxes) if (b.y < y0 + TILE && b.y + b.h > y0) paintBox(ctx, b);
     ctx.textBaseline = 'alphabetic';
     for (const g of L.glyphs) if (g.y < y0 + TILE && g.y + g.h > y0) { if (ctx.font !== g.font) ctx.font = g.font; ctx.fillStyle = g.color; ctx.fillText(g.ch, g.x, baseline(ctx, g)); }
@@ -209,7 +214,7 @@
   function contentAt(x, y) {
     const m = solid(x, y); if (!m) return null; if (m === 2 || y >= S.L.WH - 1 || x <= 0 || x >= S.L.vw - 1) return true;
     const g = glyphAt(x, y); if (g) return g;
-    const b = boxAt(x, y, true); return b && b.w * b.h < S.vArea * 0.4 ? b : null;
+    const b = boxAt(x, y, true); if (b && b.w * b.h < S.vArea * 0.4) return b; return S.L.art ? true : null;
   }
   function colorAt(x, y) { const g = Math.random() < 0.35 && glyphAt(x, y); if (g) return g.color; const b = boxAt(x, y); return b ? b.fill || (b.grad && b.grad[0]) || b.stroke || b.under : S.L.bg; }
 
@@ -308,7 +313,8 @@
     // everything drawn inside it leaves with it
     q(S.L.gh, b.x, b.y, b.w, b.h, (g) => { if (g.x >= b.x - 1 && g.x + g.w <= b.x + b.w + 1 && g.y >= b.y - 1 && g.y + g.h <= b.y + b.h + 1) g.dead = true; });
     q(S.L.bh, b.x, b.y, b.w, b.h, (c) => { if (c !== b && c.x >= b.x && c.y >= b.y && c.x + c.w <= b.x + b.w && c.y + c.h <= b.y + b.h) c.dead = true; });
-    onTiles(b.y, b.y + b.h, (c) => { c.globalCompositeOperation = 'source-atop'; c.fillStyle = b.under; c.fillRect(b.x, b.y, b.w, b.h); });
+    if (b.clear) { onTiles(b.y, b.y + b.h, (c) => { c.globalCompositeOperation = 'destination-out'; c.fillRect(b.x - 1, b.y - 1, b.w + 2, b.h + 2); }); for (let cy = Math.floor(b.y / MC); cy <= Math.floor((b.y + b.h) / MC); cy++) for (let cx = Math.floor(b.x / MC); cx <= Math.floor((b.x + b.w) / MC); cx++) setCell(cx, cy, 0); }
+    else onTiles(b.y, b.y + b.h, (c) => { c.globalCompositeOperation = 'source-atop'; c.fillStyle = b.under; c.fillRect(b.x, b.y, b.w, b.h); });
     const cx = b.x + b.w / 2, cy = b.y + b.h / 2, a = Math.atan2(cy - hy, cx - hx);
     if (S.bodies.length >= MAX_BODIES) settleOldest();
     S.bodies.push({ k: 's', sprite, hits: 0, x: cx, y: cy, hw: b.w / 2, hh: b.h / 2, vx: Math.cos(a) * force + rnd(-40, 40), vy: Math.sin(a) * force - rnd(120, 260), a: 0, va: rnd(-5, 5) * (300 / (b.w + 60)), rest: 0 });
@@ -407,7 +413,17 @@
   }
 
   // ------------------------------------------------------------------ the backdrop: an original pixel night city
-  function backdrop(vw, vh) {
+  const THEMES = {
+    city: { sky: ['#0d0b24', '#1f1747', '#3b2466', '#5d2f72'], stars: 1, moon: 1 },
+    day: { sky: ['#4aa6ff', '#86c8ff', '#c6e8ff', '#e8f6ff'], sun: '#fff6c9', ridges: ['#b8dcfa', '#9fcdf3', '#86bdea'], cloud: 'rgba(255,255,255,.75)' },
+    cave: { sky: ['#05040c', '#0d0b1c', '#16122b', '#1d1838'], glints: 1, ridges: ['#141126', '#100e1f', '#0c0a17'], hang: 1 },
+    dawn: { sky: ['#1d2a63', '#4f4a9a', '#c77fc0', '#ffb3c7'], sun: '#ffe1ea', stars: 0.4, ridges: ['#5a5ca8', '#43448a', '#2e2f68'], cloud: 'rgba(255,214,230,.35)' },
+    pcb: { sky: ['#041009', '#082014', '#0c2a1b', '#0f3322'], grid: '#135c39', ridges: ['#0b2a1b', '#082215', '#061a10'] },
+    volcano: { sky: ['#12060c', '#2e0b19', '#5c1620', '#a8361d'], embers: 1, ridges: ['#3a1018', '#2a0b12', '#1a070c'], volcano: 1 },
+  };
+  function backdrop(vw, vh, theme = 'city') {
+    const T = THEMES[theme] || THEMES.city;
+    if (theme !== 'city') return themedBack(vw, vh, T);
     const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; return [cv, cv.getContext('2d')]; };
     const [sky, c] = mk(vw, vh);
     const g = c.createLinearGradient(0, 0, 0, vh); g.addColorStop(0, '#0d0b24'); g.addColorStop(0.5, '#1f1747'); g.addColorStop(0.8, '#3b2466'); g.addColorStop(1, '#5d2f72'); c.fillStyle = g; c.fillRect(0, 0, vw, vh);
@@ -435,12 +451,32 @@
     const clouds = Array.from({ length: 6 }, () => ({ x: rnd(0, vw), y: rnd(vh * 0.08, vh * 0.45), w: rnd(60, 160), sp: rnd(4, 12) }));
     return { sky, layers, lights, clouds, vw, vh };
   }
+  function themedBack(vw, vh, T) {
+    const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; return [cv, cv.getContext('2d')]; };
+    const [sky, c] = mk(vw, vh), g = c.createLinearGradient(0, 0, 0, vh); T.sky.forEach((col, i) => g.addColorStop(i / (T.sky.length - 1), col)); c.fillStyle = g; c.fillRect(0, 0, vw, vh);
+    if (T.stars) for (let i = 0; i < (vw * vh / 2600) * T.stars; i++) { c.fillStyle = `rgba(255,255,255,${rnd(0.2, 0.8)})`; c.fillRect(rnd(0, vw) | 0, rnd(0, vh * 0.6) | 0, 1, 1); }
+    if (T.glints) for (let i = 0; i < vw * vh / 5000; i++) { c.fillStyle = pick(['#57e3ff', '#ff79c6', '#b493ff']); c.globalAlpha = rnd(0.2, 0.6); c.fillRect(rnd(0, vw) | 0, rnd(0, vh) | 0, 1, 1); } c.globalAlpha = 1;
+    if (T.grid) { c.fillStyle = T.grid; for (let x = 0; x < vw; x += 32) c.fillRect(x, 0, 1, vh); for (let y = 0; y < vh; y += 32) c.fillRect(0, y, vw, 1); for (let i = 0; i < 40; i++) { c.fillStyle = '#1e7d50'; const x = rnd(0, vw) | 0, y = rnd(0, vh) | 0; c.fillRect(x, y, rnd(20, 90) | 0, 1); } }
+    if (T.sun) { const sx = vw * 0.78, sy = vh * 0.2, sg = c.createRadialGradient(sx, sy, 8, sx, sy, 140); sg.addColorStop(0, T.sun + 'cc'); sg.addColorStop(1, T.sun + '00'); c.fillStyle = sg; c.fillRect(sx - 140, sy - 140, 280, 280); c.fillStyle = T.sun; c.beginPath(); c.arc(sx, sy, 22, 0, 7); c.fill(); }
+    if (T.embers) for (let i = 0; i < vw * vh / 3000; i++) { c.fillStyle = pick(['#ff7a3d', '#ffb020', '#ff4d5e']); c.globalAlpha = rnd(0.3, 0.8); c.fillRect(rnd(0, vw) | 0, rnd(0, vh) | 0, 1, 1); } c.globalAlpha = 1;
+    if (T.hang) for (let x = 0; x < vw; x += 14) { const h = rnd(10, 70); c.fillStyle = '#0a0814'; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 14, 0); c.lineTo(x + 7, h); c.fill(); }
+    const layers = (T.ridges || []).map((col, li) => {
+      const h = 90 + li * 40, [cv, x] = mk(vw, h), n = noise1(Math.random, 6 + li * 4);
+      x.fillStyle = col; x.beginPath(); x.moveTo(0, h);
+      for (let px = 0; px <= vw; px += 6) { let y = h * (0.15 + 0.7 * n(px / vw)); if (T.volcano && li === 0 && Math.abs(px - vw * 0.35) < 120) y = Math.min(y, h * 0.05 + Math.abs(px - vw * 0.35) * 0.5); x.lineTo(px, y); }
+      x.lineTo(vw, h); x.fill();
+      if (T.volcano && li === 0) { x.fillStyle = '#ff7a3d'; x.fillRect(vw * 0.35 - 10, h * 0.05, 20, 3); }
+      return { cv, h };
+    });
+    const clouds = T.cloud ? Array.from({ length: 7 }, () => ({ x: rnd(0, vw), y: rnd(vh * 0.05, vh * 0.4), w: rnd(70, 180), sp: rnd(5, 14) })) : [];
+    return { sky, layers, lights: [], clouds, vw, vh, cloud: T.cloud, view: 1 };
+  }
   function drawBack(v, B, cam, time) {
     v.drawImage(B.sky, 0, 0);
-    for (const c of B.clouds) { const x = ((c.x + time * c.sp) % (B.vw + c.w * 2)) - c.w; v.fillStyle = 'rgba(120,96,190,.18)'; v.fillRect(x | 0, c.y | 0, c.w | 0, 6); v.fillRect((x + c.w * 0.15) | 0, (c.y - 4) | 0, (c.w * 0.6) | 0, 4); v.fillRect((x + c.w * 0.3) | 0, (c.y + 6) | 0, (c.w * 0.5) | 0, 3); }
+    for (const c of B.clouds) { const x = ((c.x + time * c.sp) % (B.vw + c.w * 2)) - c.w; v.fillStyle = B.cloud || 'rgba(120,96,190,.18)'; v.fillRect(x | 0, c.y | 0, c.w | 0, 6); v.fillRect((x + c.w * 0.15) | 0, (c.y - 4) | 0, (c.w * 0.6) | 0, 4); v.fillRect((x + c.w * 0.3) | 0, (c.y + 6) | 0, (c.w * 0.5) | 0, 3); }
     if (Math.sin(time * 0.37) > 0.995) { const sx = (time * 997) % B.vw, sy = (time * 431) % (B.vh * 0.4); v.fillStyle = '#ffffff'; for (let k = 0; k < 18; k++) v.fillRect((sx - k * 3) | 0, (sy + k) | 0, 2, 1); }
     B.layers.forEach((L, li) => {
-      const y = Math.round(SKY + 6 - L.h - cam * (0.25 + li * 0.2));   // stands on the page's top edge, nearer layers move more
+      const y = B.view ? Math.round(B.vh - L.h + 10 - cam * 0.03 * (li + 1)) : Math.round(SKY + 6 - L.h - cam * (0.25 + li * 0.2));   // maps: on the horizon; pages: on the page's top edge
       v.drawImage(L.cv, 0, y);
       for (const l of B.lights) if (l.li === li && Math.sin(time * 2.4 + l.ph) > 0.2) { v.fillStyle = '#ff4d5e'; v.fillRect(l.x, y + l.y, 2, 2); v.fillStyle = 'rgba(255,77,94,.35)'; v.fillRect(l.x - 1, y + l.y - 1, 4, 4); }
     });
@@ -486,6 +522,7 @@
     }
     if (hits(P.x, P.y)) { for (let s = 1; s < 40; s++) if (!hits(P.x, P.y - s)) { P.y -= s; break; } }
     if (P.y > S.L.WH) P.y = S.L.WH;
+    if (S.L.lava && P.y > S.L.lava + 8) { if (Wreck.net) hurt(70 * dt, 'lava', 'lava'); else { P.vy = -1150; P.jumps = 1; } if (Math.random() < 0.5) S.fx.push({ k: 'fire', x: P.x + rnd(-8, 8), y: P.y - rnd(0, 20), vx: rnd(-60, 60), vy: rnd(-260, -120), s: pick([3, 4, 5]), life: rnd(0.2, 0.4), t: 0 }); }
     if (P.grounded) { if (!wasG && P.air > 0.3) { P.land = 1; dust(P.x, P.y, 7); sfx('thump'); } P.jumps = 0; P.air = 0; P.flip = -1; } else P.air += dt;
     P.aim = Math.atan2(S.aimY - (P.y - SH), S.aimX - P.x);
     for (let it = 0; it < 2; it++) { P.face = Math.cos(P.aim) >= 0 ? 1 : -1; const m = muzzle(P); if (Math.hypot(S.aimX - m.x, S.aimY - m.y) >= 24) P.aim = Math.atan2(S.aimY - m.y, S.aimX - m.x); }
@@ -877,6 +914,159 @@
     try { Rf(c, '#07080f', w / 2 - 24, h - 10, 48, 4); Rf(c, '#3c3f60', w / 2 - 23, h - 10, 46, 1); P.y -= Math.round(Math.abs(Math.sin(t * 2)) * 1); drawSuit(c, P, plate); } finally { S = S0; }
   }
 
+  // ------------------------------------------------------------------ maps: original themed levels, generated from a fixed seed
+  // Every player builds the same map from the same seed, so rooms share one level.
+  function rng32(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  const hashStr = (s) => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
+  function noise1(r, cells) { const v = Array.from({ length: cells + 2 }, r); return (u) => { const x = clamp(u, 0, 1) * cells, i = Math.floor(x), f = x - i, s = f * f * (3 - 2 * f); return v[i] * (1 - s) + v[i + 1] * s; }; }
+  // texture: speckle a clipped area with darker and lighter pixels
+  function speckle(c, r, x, y, w, h, cols, n) { for (let i = 0; i < n; i++) { c.fillStyle = cols[(r() * cols.length) | 0]; c.fillRect((x + r() * w) | 0, (y + r() * h) | 0, r() < 0.3 ? 2 : 1, r() < 0.3 ? 2 : 1); } }
+  function poly(c, col, pts) { c.fillStyle = col; c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); c.fill(); }
+  // pixel-art edge light: lit top edges, shaded undersides, dark outline into the air
+  function edgePass(cv, top, under) {
+    const c = cv.getContext('2d'), im = c.getImageData(0, 0, cv.width, cv.height), d = im.data, W2 = cv.width, H2 = cv.height, a = (x, y) => x >= 0 && y >= 0 && x < W2 && y < H2 && d[(y * W2 + x) * 4 + 3] > 128;
+    const T = [1, 3, 5].map((k) => parseInt(top.slice(k, k + 2), 16)), U = [1, 3, 5].map((k) => parseInt(under.slice(k, k + 2), 16)), set = [], put = (x, y, col, al = 255) => set.push([x, y, col, al]);
+    for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) { if (!a(x, y)) continue; if (!a(x, y - 1)) { put(x, y, T); if (a(x, y + 1)) put(x, y + 1, T, 150); } else if (!a(x, y + 1)) put(x, y, U); else if (!a(x - 1, y) || !a(x + 1, y)) put(x, y, U, 120); }
+    for (const [x, y, col, al] of set) { const i = (y * W2 + x) * 4, k = al / 255; d[i] = d[i] * (1 - k) + col[0] * k; d[i + 1] = d[i + 1] * (1 - k) + col[1] * k; d[i + 2] = d[i + 2] * (1 - k) + col[2] * k; }
+    c.putImageData(im, 0, 0);
+  }
+  // crisp text on a sign: glyph records so the letters can be shot off
+  function signText(c, glyphs, text, x, y, size, color, under) {
+    c.font = `700 ${size}px Silkscreen, ui-monospace, monospace`; c.textBaseline = 'alphabetic'; let cx = x;
+    for (const ch of text) { const w = c.measureText(ch).width; if (ch !== ' ') { c.fillStyle = color; c.fillText(ch, cx, y); glyphs.push({ ch, x: cx, y: y - size, w, h: size * 1.15, font: c.font, color, under, dead: false, burn: 0, by: y }); } cx += w + 1; }
+    return cx - x;
+  }
+  const crate = (boxes, x, y, s, fill, band) => boxes.push({ x, y, w: s, h: s, r: 2, fill, stroke: band, sw: 3, hp: 60, hits: 0, dead: false, vis: true, clear: true, under: 'transparent' });
+
+  const MAPS = {
+    isles: { name: 'Floating Isles', theme: 'day', height: 1650, gen(c, W2, H2, r, boxes, glyphs, spawns) {
+      const rows = [300, 560, 820, 1080, 1340];
+      rows.forEach((ry, ri) => {
+        let x = 30 + r() * 120;
+        while (x < W2 - 160) {
+          const w = 170 + r() * 260, top = ry + r() * 70 - 35, th = 34 + r() * 26, depth = 70 + r() * 110, n = noise1(r, 6);
+          const pts = []; for (let k = 0; k <= 12; k++) pts.push([x + (k / 12) * w, top + (n(k / 12) - 0.5) * 8]);
+          for (let k = 12; k >= 0; k--) { const u = k / 12, edge = Math.sin(u * Math.PI); pts.push([x + u * w + (r() - 0.5) * 10, top + th + edge * depth * (0.55 + r() * 0.45)]); }
+          poly(c, '#5a6585', pts);
+          c.save(); c.clip(new Path2D(`M${pts.map((p) => p.join(' ')).join(' L')} Z`)); speckle(c, r, x, top, w, th + depth, ['#4b5574', '#68739a', '#515b7c'], (w * (th + depth)) / 18);
+          for (let s = top + 18; s < top + th + depth; s += 14) { c.fillStyle = 'rgba(40,46,70,.35)'; c.fillRect(x, s | 0, w, 1); }
+          c.fillStyle = '#2e9a58'; c.fillRect(x - 2, top - 4, w + 4, 12); c.restore();
+          poly(c, '#3fbf6f', pts.slice(0, 13).map(([px, py]) => [px, py - 4]).concat([[x + w + 2, top + 4], [x - 2, top + 4]]));
+          for (let gx = x; gx < x + w; gx += 2) if (r() < 0.45) { c.fillStyle = r() < 0.5 ? '#7be39b' : '#58d184'; c.fillRect(gx | 0, (top - 6 - r() * 3) | 0, 1, 3); }
+          for (let fx = x + 8; fx < x + w - 8; fx += 18 + r() * 30) { c.fillStyle = pick2(r, ['#ff79c6', '#ffe066', '#ffffff']); c.fillRect(fx | 0, (top - 7) | 0, 2, 2); }
+          if (w > 240 && r() < 0.7) { const tx = x + w * (0.2 + r() * 0.6); c.fillStyle = '#3b4054'; c.fillRect(tx - 3, top - 40, 6, 40); [[0, -52, 18], [-12, -42, 13], [12, -42, 13], [0, -64, 12]].forEach(([dx, dy, rr], k) => { c.fillStyle = k === 3 ? '#4fd17f' : '#2fae63'; c.beginPath(); c.arc(tx + dx, top + dy, rr, 0, 7); c.fill(); c.fillStyle = '#7be39b'; c.fillRect(tx + dx + rr * 0.2, top + dy - rr * 0.6, 3, 2); }); }
+          if (r() < 0.6) crate(boxes, (x + w * (0.15 + r() * 0.6)) | 0, (top - 26) | 0, 22, '#ff8a3d', '#a8501d');
+          if (ri === 0) spawns.push([x + w / 2, top - 10]);
+          x += w + 70 + r() * 150;
+        }
+      });
+      c.fillStyle = '#3d7fd6'; c.fillRect(0, H2 - 50, W2, 50); c.fillStyle = '#5fa0ef'; for (let x = 0; x < W2; x += 6) if (r() < 0.5) c.fillRect(x, H2 - 50 + ((r() * 6) | 0), 4, 1);
+      const sx = W2 * 0.5 - 70; boxes.push({ x: sx, y: 210, w: 140, h: 36, r: 3, fill: '#2f3650', stroke: '#ffe066', sw: 2, hp: 80, hits: 0, dead: false, vis: true, clear: true, under: 'transparent' });
+      c.fillStyle = '#2f3650'; c.fillRect(sx + 66, 246, 8, 50);
+      signText(c, glyphs, 'WRECK', sx + 14, 236, 20, '#ffe066', '#2f3650');
+    } },
+    caverns: { name: 'Crystal Caverns', theme: 'cave', height: 1800, gen(c, W2, H2, r, boxes, glyphs, spawns) {
+      const S2 = 10, gw = Math.ceil(W2 / S2), gh = Math.ceil(H2 / S2); let g = new Uint8Array(gw * gh);
+      for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) g[y * gw + x] = y * S2 < 220 ? 0 : x === 0 || x === gw - 1 || y === gh - 1 ? 1 : r() < 0.5 ? 1 : 0;
+      for (let it = 0; it < 5; it++) { const n2 = new Uint8Array(g.length); for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { let s = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; s += xx < 0 || yy < 0 || xx >= gw || yy >= gh ? 1 : g[yy * gw + xx]; } n2[y * gw + x] = y * S2 < 220 ? 0 : s >= 5 ? 1 : 0; } g = n2; }
+      for (let x = 0; x < gw; x++) for (let y = 22; y < 26; y++) g[y * gw + x] = 1;          // a ceiling crust under the entrance hall
+      for (let k = 0; k < 4; k++) { const hx = ((0.15 + k * 0.23) * gw) | 0; for (let y = 22; y < 26; y++) for (let x = hx; x < hx + 4; x++) g[y * gw + x] = 0; }   // shafts down
+      for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) if (g[y * gw + x]) { const n = (x * 7 + y * 13) % 3; c.fillStyle = ['#2d2a45', '#302c4a', '#2a2742'][n]; c.fillRect(x * S2, y * S2, S2, S2); }
+      speckle(c, r, 0, 220, W2, H2 - 220, ['#25223b', '#3a365a', '#221f36'], (W2 * H2) / 40);
+      for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
+        const on = g[y * gw + x], up = g[(y - 1) * gw + x], dn = g[(y + 1) * gw + x];
+        if (on && !up && r() < 0.045) crystal(c, r, x * S2 + 5, y * S2, -1);
+        if (on && !dn && r() < 0.12) { if (r() < 0.82) poly(c, '#24213a', [[x * S2, (y + 1) * S2], [x * S2 + 10, (y + 1) * S2], [x * S2 + 5, (y + 1) * S2 + 12 + r() * 14]]); else crystal(c, r, x * S2 + 5, (y + 1) * S2, 1); }
+      }
+      for (let k = 0; k < 6; k++) spawns.push([W2 * (0.1 + k * 0.16), 200]);
+      const sx = W2 * 0.5 - 90; boxes.push({ x: sx, y: 120, w: 180, h: 34, r: 3, fill: '#1a1830', stroke: '#57e3ff', sw: 2, hp: 80, hits: 0, dead: false, vis: true, clear: true, under: 'transparent' });
+      signText(c, glyphs, 'DIG DEEP', sx + 12, 145, 18, '#57e3ff', '#1a1830');
+    } },
+    rooftops: { name: 'Neon Rooftops', theme: 'city', height: 1500, gen(c, W2, H2, r, boxes, glyphs, spawns) {
+      const ground = H2 - 70; c.fillStyle = '#23263a'; c.fillRect(0, ground, W2, 70); c.fillStyle = '#ffe066'; for (let x = 10; x < W2; x += 60) c.fillRect(x, ground + 32, 26, 3);
+      let x = 20; const words = ['NEON', 'WRECK', 'PIXEL', 'OPEN', 'HOTEL', 'ARCADE'];
+      while (x < W2 - 80) {
+        const w = 130 + r() * 150, top = 330 + r() * 560, col = pick2(r, ['#2b2f55', '#33275a', '#24345a', '#3a2a50']);
+        c.fillStyle = col; c.fillRect(x, top, w, ground - top);
+        c.fillStyle = shadeHex(col, 1.3); c.fillRect(x, top, w, 4); c.fillRect(x + w - 3, top, 3, ground - top);
+        c.fillStyle = shadeHex(col, 0.75); c.fillRect(x, top + 4, 3, ground - top);
+        for (let wy = top + 18; wy < ground - 14; wy += 18) for (let wx = x + 10; wx < x + w - 14; wx += 16) { const lit = r() < 0.45; c.fillStyle = lit ? pick2(r, ['#ffcf6b', '#ffe9a8', '#9fd8ff']) : '#171a2e'; c.fillRect(wx, wy, 8, 10); if (lit) { c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(wx, wy, 8, 2); } }
+        if (r() < 0.6) { const tx = x + 14 + r() * (w - 50); c.fillStyle = '#3b4054'; c.fillRect(tx, top - 34, 30, 30); c.fillRect(tx + 4, top - 6, 4, 6); c.fillRect(tx + 22, top - 6, 4, 6); c.fillStyle = '#4f5674'; c.fillRect(tx, top - 34, 30, 4); }
+        if (r() < 0.7) boxes.push({ x: (x + w - 44 - r() * 30) | 0, y: (top - 18) | 0, w: 28, h: 18, r: 1, fill: '#8a90ad', stroke: '#4a4f6e', sw: 2, hp: 50, hits: 0, dead: false, vis: true, clear: true, under: 'transparent' });
+        if (r() < 0.5) { const ax = x + w * 0.5; c.fillStyle = '#4a4f6e'; c.fillRect(ax, top - 60, 2, 60); c.fillStyle = '#ff4d5e'; c.fillRect(ax - 1, top - 62, 4, 3); }
+        if (r() < 0.45 && w > 150) { const bw = Math.min(w - 20, 150), bx = x + (w - bw) / 2, by = top - 80, nc = pick2(r, ['#ff5d73', '#57e3ff', '#b6ff7a', '#ff9ef0']); c.fillStyle = '#3b4054'; c.fillRect(bx + 10, by + 40, 4, 40); c.fillRect(bx + bw - 14, by + 40, 4, 40); boxes.push({ x: bx, y: by, w: bw, h: 40, r: 2, fill: '#141526', stroke: nc, sw: 3, hp: 90, hits: 0, dead: false, vis: true, clear: true, under: 'transparent' }); signText(c, glyphs, pick2(r, words), bx + 12, by + 29, 18, nc, '#141526'); }
+        spawns.push([x + w / 2, top - 6]);
+        x += w + 40 + r() * 70;
+      }
+    } },
+    peak: { name: 'Frozen Peak', theme: 'dawn', height: 1700, gen(c, W2, H2, r, boxes, glyphs, spawns) {
+      const n = noise1(r, 7), n2 = noise1(r, 23), hgt = (u) => 360 + (1 - Math.sin(u * Math.PI) * 0.9) * 520 + (n(u) - 0.5) * 260 + (n2(u) - 0.5) * 50;
+      const pts = [[0, H2]]; for (let x = 0; x <= W2; x += 8) pts.push([x, hgt(x / W2)]); pts.push([W2, H2]);
+      poly(c, '#5a6788', pts); c.save(); c.clip(new Path2D(`M${pts.map((p) => p.join(' ')).join(' L')} Z`));
+      speckle(c, r, 0, 300, W2, H2 - 300, ['#4f5b7c', '#66739a', '#53607f'], (W2 * H2) / 30);
+      for (let k = 0; k < 14; k++) { const ix = r() * W2, iy = hgt(ix / W2) + 80 + r() * 700; poly(c, '#9fd8ff', [[ix, iy], [ix + 30 + r() * 40, iy + 6], [ix + 20, iy + 26], [ix - 16, iy + 18]]); c.fillStyle = '#e6f7ff'; c.fillRect(ix + 4, iy + 4, 8, 2); }
+      for (let k = 0; k < 5; k++) { const cx = W2 * (0.12 + r() * 0.76), cy = hgt(cx / W2) + 160 + r() * 600, rw = 60 + r() * 90; c.save(); c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.ellipse(cx, cy, rw, 26 + r() * 22, 0, 0, 7); c.fill(); c.restore(); }
+      c.restore();
+      for (let x = 0; x < W2; x += 2) { const y = hgt(x / W2); c.fillStyle = '#f4f8ff'; c.fillRect(x, y - 3, 2, 9 + ((r() * 4) | 0)); c.fillStyle = '#c9dcff'; c.fillRect(x, y + 6, 2, 2); }
+      for (let k = 0; k < 16; k++) { const tx = r() * W2, ty = hgt(tx / W2) + 2, s = 0.7 + r() * 0.6; for (let l = 0; l < 3; l++) poly(c, l === 2 ? '#2f7a5a' : '#256b4d', [[tx - 14 * s + l * 3 * s, ty - l * 12 * s], [tx + 14 * s - l * 3 * s, ty - l * 12 * s], [tx, ty - (l * 12 + 20) * s]]); c.fillStyle = '#ffffff'; c.fillRect(tx - 2, ty - 44 * s, 4, 3); c.fillStyle = '#3b4054'; c.fillRect(tx - 2, ty, 4, 6); }
+      for (let k = 0; k < 5; k++) crate(boxes, (W2 * (0.1 + k * 0.2)) | 0, (hgt(0.1 + k * 0.2) - 24) | 0, 22, '#9fd8ff', '#4f8cff');
+      for (let k = 0; k < 6; k++) { const sx = W2 * (0.08 + k * 0.17); spawns.push([sx, hgt(sx / W2) - 12]); }
+    } },
+    circuit: { name: 'Circuit Board', theme: 'pcb', height: 1600, gen(c, W2, H2, r, boxes, glyphs, spawns) {
+      const slabs = [];
+      for (let y = 320; y < H2 - 120; y += 230) { let x = 10 + r() * 80; while (x < W2 - 120) { const w = 220 + r() * 320; slabs.push([x, y + r() * 60, Math.min(w, W2 - x - 10), 40 + r() * 24]); x += w + 60 + r() * 110; } }
+      slabs.push([0, H2 - 60, W2, 60]);
+      for (const [x, y, w, h] of slabs) {
+        c.fillStyle = '#1f8f5a'; c.fillRect(x, y, w, h); c.fillStyle = '#26a868'; c.fillRect(x, y, w, 3); c.fillStyle = '#17734a'; c.fillRect(x, y + h - 3, w, 3);
+        for (let tx = x + 8; tx < x + w - 8; tx += 10 + r() * 14) { c.fillStyle = '#e8b04a'; const ty = y + 8 + r() * (h - 16); c.fillRect(tx, ty, 18 + r() * 40, 2); c.fillRect(tx, ty, 2, 6 + r() * 8); c.fillStyle = '#ffd27a'; c.fillRect(tx - 1, ty - 1, 3, 3); }
+        for (let cx = x + 20; cx < x + w - 60; cx += 90 + r() * 90) {
+          if (r() < 0.55) { const cw = 46 + r() * 30; c.fillStyle = '#9aa3c7'; for (let p = cx + 4; p < cx + cw - 3; p += 6) { c.fillRect(p, y - 4, 3, 4); } boxes.push({ x: cx | 0, y: (y - 22) | 0, w: cw | 0, h: 18, r: 1, fill: '#15161f', stroke: '#3a3d58', sw: 1, hp: 70, hits: 0, dead: false, vis: true, clear: true, under: 'transparent' }); signText(c, glyphs, 'IC' + ((r() * 9 + 1) | 0), cx + 6, y - 8, 10, '#e6eaff', '#15161f'); }
+          else { boxes.push({ x: cx | 0, y: (y - 26) | 0, w: 14, h: 26, r: 4, fill: '#4f8cff', stroke: '#2b5bff', sw: 2, hp: 40, hits: 0, dead: false, vis: true, clear: true, under: 'transparent' }); }
+        }
+        spawns.push([x + w / 2, y - 30]);
+      }
+      const sx = W2 * 0.5 - 80; boxes.push({ x: sx, y: 200, w: 160, h: 34, r: 2, fill: '#0f3d2a', stroke: '#e8b04a', sw: 2, hp: 80, hits: 0, dead: false, vis: true, clear: true, under: 'transparent' });
+      signText(c, glyphs, 'OVERCLOCK', sx + 10, 224, 14, '#e8b04a', '#0f3d2a');
+    } },
+    forge: { name: 'Lava Forge', theme: 'volcano', height: 1600, lava: 1600 - 110, gen(c, W2, H2, r, boxes, glyphs, spawns) {
+      const rows = [300, 540, 780, 1020, 1260];
+      rows.forEach((ry) => { let x = 20 + r() * 100; while (x < W2 - 140) {
+        const w = 160 + r() * 240, top = ry + r() * 60 - 30, th = 30 + r() * 30, pts = [];
+        for (let k = 0; k <= 10; k++) pts.push([x + (k / 10) * w, top + (r() - 0.5) * 6]);
+        for (let k = 10; k >= 0; k--) pts.push([x + (k / 10) * w + (r() - 0.5) * 12, top + th + Math.sin((k / 10) * Math.PI) * (30 + r() * 40)]);
+        poly(c, '#2a2333', pts); c.save(); c.clip(new Path2D(`M${pts.map((p) => p.join(' ')).join(' L')} Z`));
+        speckle(c, r, x, top, w, th + 80, ['#221c2a', '#352c40', '#1d1824'], (w * (th + 80)) / 16);
+        for (let k = 0; k < 4; k++) { const cx = x + r() * w; c.fillStyle = '#ff7a3d'; c.fillRect(cx, top + 6 + r() * th, 1 + ((r() * 2) | 0), 6 + r() * 10); }
+        c.restore(); c.fillStyle = '#ff5d4a'; for (let gx = x; gx < x + w; gx += 2) if (r() < 0.25) c.fillRect(gx, top + th + 24 + r() * 20, 2, 2);
+        if (r() < 0.5) crate(boxes, (x + w * (0.2 + r() * 0.6)) | 0, (top - 24) | 0, 22, '#4a4f6e', '#ff7a3d');
+        spawns.push([x + w / 2, top - 8]); x += w + 80 + r() * 140; } });
+      const ly = H2 - 110; for (let y = ly; y < H2; y++) { c.fillStyle = y < ly + 6 ? '#ffe066' : y < ly + 16 ? '#ffb020' : '#ff6a2a'; c.fillRect(0, y, W2, 1); }
+      for (let k = 0; k < W2 / 6; k++) { c.fillStyle = r() < 0.5 ? '#fff6d0' : '#ffd27a'; c.fillRect(r() * W2, ly + 4 + r() * 90, 3, 2); }
+    } },
+  };
+  const pick2 = (r, a) => a[(r() * a.length) | 0];
+  function crystal(c, r, x, y, dir) {
+    const col = pick2(r, [['#57e3ff', '#b2f6ff', '#2b9fc4'], ['#ff79c6', '#ffc2e6', '#c44a92'], ['#b493ff', '#e3d6ff', '#7a52d6']]), n = 2 + ((r() * 3) | 0);
+    const g = c.createRadialGradient(x, y + dir * 10, 2, x, y + dir * 10, 30); g.addColorStop(0, col[0] + '55'); g.addColorStop(1, col[0] + '00'); c.fillStyle = g; c.fillRect(x - 30, y + dir * 10 - 30, 60, 60);
+    for (let i = 0; i < n; i++) { const h = 10 + r() * 18, w = 4 + r() * 4, ox = (i - n / 2) * 5 + (r() - 0.5) * 3, tilt = (r() - 0.5) * 6; poly(c, col[0], [[x + ox - w / 2, y], [x + ox + w / 2, y], [x + ox + tilt + w / 4, y + dir * h], [x + ox + tilt - w / 4, y + dir * h * 0.92]]); c.fillStyle = col[1]; c.fillRect(x + ox - 1, y + dir * 2, 1, dir * h * 0.6); }
+  }
+  // build a level record for a map id at this width; the same id and width always gives the same map
+  function makeMap(id, vw) {
+    const M = MAPS[id] || MAPS.isles, H2 = M.height, r = rng32(hashStr(id + ':' + vw));
+    const cv = document.createElement('canvas'); cv.width = vw; cv.height = H2; const c = cv.getContext('2d');
+    const boxes = [], glyphs = [], spawns = [];
+    M.gen(c, vw, H2, r, boxes, glyphs, spawns);
+    edgePass(cv, ...({ day: ['#8a96bd', '#3a4260'], cave: ['#4f4a78', '#1b1930'], city: ['#5a5f8f', '#15172b'], dawn: ['#ffffff', '#3d4866'], pcb: ['#3fd58d', '#0f4d31'], volcano: ['#ff7a3d', '#140f19'] }[M.theme] || ['#ffffff', '#000000']));
+    for (const b of boxes) { b.under = 'transparent'; b.hp0 = b.hp; }
+    return { map: id, theme: M.theme, art: cv, boxes, glyphs, bg: null, vw, pageH: H2, WH: H2, spawns: spawns.length ? spawns : [[vw / 2, 100]], lava: M.lava };
+  }
+  Wreck.maps = Object.entries(MAPS).map(([id, m]) => ({ id, name: m.name }));
+  // a small picture of a map for the menu
+  Wreck.mapThumb = (id, canvas) => {
+    const L = makeMap(id, 1280), c = canvas.getContext('2d'), k = canvas.width / 1280; c.imageSmoothingEnabled = true;
+    const B = backdrop(1280, Math.ceil(canvas.height / k), L.theme); c.save(); c.scale(k, k); c.drawImage(B.sky, 0, 0); B.layers.forEach((Ly, li) => c.drawImage(Ly.cv, 0, B.vh - Ly.h + 10 - li * 0)); c.drawImage(L.art, 0, 0); for (const b of L.boxes) paintBox(c, b); c.restore();
+  };
+
   // ------------------------------------------------------------------ drawing (1x world, scaled to the screen with crisp pixels)
   function sprite(w) { if (w._spr) return w._spr; const minX = Math.min(...w.px.map((r) => r[0])), minY = Math.min(...w.px.map((r) => r[1])), maxX = Math.max(...w.px.map((r) => r[0] + r[2])), maxY = Math.max(...w.px.map((r) => r[1] + r[3])); const cv = document.createElement('canvas'); cv.width = maxX - minX + 2; cv.height = maxY - minY + 2; const c = cv.getContext('2d'); c.fillStyle = OUT; for (const r of w.px) c.fillRect(r[0] - minX, r[1] - minY, r[2] + 2, r[3] + 2); for (const r of w.px) { c.fillStyle = r[4]; c.fillRect(r[0] - minX + 1, r[1] - minY + 1, r[2], r[3]); } return (w._spr = { cv, ox: minX - 1, oy: minY - 1 }); }
   function draw() {
@@ -1022,7 +1212,7 @@
   function labels() { const c = matchMedia('(pointer: coarse)').matches; S.hud.$('.snd').textContent = c ? (muted ? 'x' : '♪') : muted ? 'Sound off' : 'Sound on'; S.hud.$('.rst').textContent = c ? '↻' : 'Rebuild'; S.hud.$('.ext').textContent = c ? '✕' : 'Exit'; }
   function toggleMute() { muted = !muted; try { localStorage.setItem('wreck-muted', muted ? '1' : '0'); } catch {} labels(); if (muted) flameSound(false); }
   // mostly letters knocked off (what you see go), plus elements broken and page carved away
-  function progress() { const L = S.L; return clamp(0.7 * S.stats.letters / Math.max(1, L.glyphs.length) + 0.15 * S.stats.elements / Math.max(1, L.boxes.length * 0.5) + 0.15 * S.removed / (L.total * 0.3), 0, 1); }
+  function progress() { const L = S.L; if (L.art) return clamp(0.6 * S.removed / (L.total * 0.3) + 0.25 * S.stats.letters / Math.max(1, L.glyphs.length) + 0.15 * S.stats.elements / Math.max(1, L.boxes.length), 0, 1); return clamp(0.7 * S.stats.letters / Math.max(1, L.glyphs.length) + 0.15 * S.stats.elements / Math.max(1, L.boxes.length * 0.5) + 0.15 * S.removed / (L.total * 0.3), 0, 1); }
   function hudTick(dt) {
     const p = progress();
     if ((S.frame & 3) === 0) { S.hud.pct.textContent = Math.floor(p * 100) + '%'; S.hud.bar.style.width = (p * 100).toFixed(1) + '%'; }
@@ -1098,7 +1288,7 @@
   const MAX_HP = 100, RESPAWN = 3, SHIELD = 1.5;
   const DMG = { pistol: 22, smg: 9, shotgun: 11, drone: 5 };
   const BLAST = { rocket: 95, grenade: 85, bomblet: 40, drone: 60, hole: 70 };
-  const WNAME = { pistol: 'Pistol', smg: 'SMG', shotgun: 'Shotgun', rocket: 'Rocket', rail: 'Railgun', flame: 'Flamethrower', bomblet: 'Doomsday', grenade: 'Grenade', drone: 'Drone', hole: 'Black Hole' };
+  const WNAME = { lava: 'Lava', pistol: 'Pistol', smg: 'SMG', shotgun: 'Shotgun', rocket: 'Rocket', rail: 'Railgun', flame: 'Flamethrower', bomblet: 'Doomsday', grenade: 'Grenade', drone: 'Drone', hole: 'Black Hole' };
   const me = () => Wreck.selfId || 'me';
   // a bullet at x, y hits a living player other than its owner (shields still stop bullets)
   function playerAt(x, y, owner) {
@@ -1126,11 +1316,12 @@
     for (let i = 0; i < 26 && S.fx.length < MAX_FX; i++) S.fx.push({ k: 'fire', x: P.x + rnd(-10, 10), y: P.y - rnd(10, 50), vx: rnd(-200, 200), vy: rnd(-260, 40), s: pick([3, 4, 5, 6]), life: rnd(0.3, 0.7), t: 0 });
     S.fx.push({ k: 'ring', x: P.x, y: P.y - 28, r: 6, max: 60, life: 0.3, t: 0 }); S.fx.push({ k: 'light', vx: 0, vy: 0, x: P.x, y: P.y - 28, s: 160, a: 0.9, life: 0.3, t: 0 });
   }
+  function spawnAt() { const L = S.L; if (L.spawns) { const s = L.spawns[(Math.random() * L.spawns.length) | 0]; return [Math.round(s[0] + rnd(-20, 20)), Math.round(s[1]) - 40]; } return [Math.round(rnd(0.15, 0.85) * L.vw), SKY - 60]; }
   function respawn() {
-    const P = S.p; P.x = Math.round(rnd(0.15, 0.85) * S.L.vw); P.y = SKY - 70; P.vx = P.vy = 0; P.hp = MAX_HP; P.alive = true; P.shield = SHIELD; P.cd = 0.3; P.flip = -1; P.charge = -1;
+    const P = S.p, sp = spawnAt(); P.x = sp[0]; P.y = sp[1]; P.vx = P.vy = 0; P.hp = MAX_HP; P.alive = true; P.shield = SHIELD; P.cd = 0.3; P.flip = -1; P.charge = -1;
     S.fx.push({ k: 'ring', x: P.x, y: P.y - 28, r: 60, max: 4, life: 0.35, t: 0, c: '#57e3ff' });
   }
-  const nameOf = (id) => (id === me() ? 'You' : S.remotes.get(id)?.name || (roster.find((r) => r.id === id)?.name) || 'Someone');
+  const nameOf = (id) => (id === 'lava' ? 'Lava' : id === me() ? 'You' : S.remotes.get(id)?.name || (roster.find((r) => r.id === id)?.name) || 'Someone');
   function feed(by, victim, w) {
     if (by === me() && victim !== me()) S.kills = (S.kills || 0) + 1;
     const line = by && by !== victim ? `${nameOf(by)} ✕ ${nameOf(victim)}  ·  ${WNAME[w] || ''}` : `${nameOf(victim)} self-destructed`;
@@ -1148,7 +1339,7 @@
   const KINDS = new Set(['b', 'r', 'n', 'm', 'd', 'h', 'w']);
   const ser = (s) => ({ k: s.k, x: r1(s.x), y: r1(s.y), vx: r1(s.vx), vy: r1(s.vy), dmg: s.dmg, pierce: s.pierce, carve: s.carve, fuse: s.fuse, life: s.life, r: s.r, w: s.w, range: s.range != null ? Math.round(s.range) : undefined });
   const SKIN_RE = /^#[0-9a-f]{6}$/i;
-  function remotePlayer(r) { const p = makePlayer(Math.round(S.L.vw * (0.2 + Math.random() * 0.6)), SKY - 60); p.id = r.id; p.name = String(r.name || 'Player').slice(0, 16); p.skin = SKIN_RE.test(r.skin) ? r.skin : '#4f8cff'; p.tx = p.x; p.ty = p.y; p.tokens = 40; p.hp = MAX_HP; p.alive = true; return p; }
+  function remotePlayer(r) { const sp = spawnAt(); const p = makePlayer(sp[0], sp[1]); p.id = r.id; p.name = String(r.name || 'Player').slice(0, 16); p.skin = SKIN_RE.test(r.skin) ? r.skin : '#4f8cff'; p.tx = p.x; p.ty = p.y; p.tokens = 40; p.hp = MAX_HP; p.alive = true; return p; }
   function stepRemotes(dt) {
     for (const R of S.remotes.values()) {
       R.tx += R.vx * dt; R.ty += R.vy * dt;                     // dead-reckon between updates, then ease toward it
@@ -1205,16 +1396,16 @@
     S.k = S.sw / S.L.vw; S.vw = S.L.vw; S.vh = Math.ceil(S.sh / S.k);
     S.cv.width = Math.round(S.sw * S.dpr); S.cv.height = Math.round(S.sh * S.dpr);
     S.view.width = S.vw; S.view.height = S.vh; S.vctx = S.view.getContext('2d');
-    S.back = backdrop(S.vw, S.vh); S.vArea = S.vw * S.vh;
+    S.back = backdrop(S.vw, S.vh, S.L.theme || 'city'); if (S.L.art) S.back.view = 1; S.vArea = S.vw * S.vh;
   }
   function build() {
-    const L = extract(); S.L = L; S.stamp = 1; buildWorld(L);
+    const L = Wreck.map ? makeMap(Wreck.map, Wreck.width || document.documentElement.clientWidth || innerWidth) : extract(); S.L = L; S.stamp = 1; buildWorld(L);
     S.removed = 0; S.extra = 0; S.sand = 0;
     S.bodies = []; S.shots = []; S.fx = []; S.beams = []; S.drones = []; S.done = false; S.time = 0;
     S.remotes = new Map(); for (const r of roster) if (r.id !== Wreck.selfId) S.remotes.set(r.id, remotePlayer(r));
     S.stats = { letters: 0, elements: 0, explosions: 0, shots: 0, eaten: 0 };
     S.cam = 0; const w = S.p ? S.p.weapon : 0;
-    S.p = makePlayer(Math.round(Math.min(L.vw * 0.3, 260)), SKY - 60); S.p.weapon = w;
+    const sp = spawnAt(); S.p = makePlayer(sp[0], sp[1]); S.p.weapon = w;
   }
   function rebuild(fromNet) {
     if (!S) return;

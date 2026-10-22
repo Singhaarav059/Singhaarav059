@@ -88,6 +88,11 @@
   .panel { font-family: Silkscreen, ui-monospace, Menlo, monospace; color: #e9eaf5; background: linear-gradient(#232540, #17182b); border: 3px solid #07080f; border-radius: 4px; box-shadow: inset 3px 3px 0 #4a4e78, inset -3px -3px 0 #0e0f1c, 0 8px 0 rgba(0,0,0,.5); max-height: calc(100vh - 32px); overflow-y: auto; }
   .panel h2 { font-family: Silkscreen, monospace; font-weight: 400; font-size: 30px; color: #ffe066; text-shadow: 3px 3px 0 #b23a4e, 6px 6px 0 #07080f; letter-spacing: 0; }
   .panel p { color: #a4a8c8; font-size: 12px; line-height: 1.7; }
+  .maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+  .maps button { position: relative; padding: 0; border: 2px solid #07080f; border-radius: 3px; background: #0e0f1c; cursor: pointer; overflow: hidden; aspect-ratio: 16 / 10; }
+  .maps button canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  .maps button span { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 4px; font: 9px Silkscreen, monospace; color: #fff; background: rgba(7,8,15,.75); text-align: left; }
+  .maps button[aria-pressed="true"] { outline: 3px solid #ffe066; outline-offset: 1px; }
   .hero { display: flex; gap: 14px; align-items: center; }
   .hero canvas { width: 120px; height: 160px; flex: none; image-rendering: pixelated; background: radial-gradient(60% 50% at 50% 60%, rgba(91,107,214,.35), transparent 70%); }
   .lbl { color: #ffe066; font-size: 11px; font-weight: 400; }
@@ -139,6 +144,8 @@
     <p>Suit up. The page is the ground: dig through it, knock its letters off and blow its boxes loose with ten weapons.</p></div></div>
     <div id="solo">
     <button class="play" id="play">Play solo</button>
+    <div class="lbl">MAP</div>
+    <div class="maps" id="maps"></div>
     <div class="lbl">SUIT COLOUR</div>
     <div class="skins" id="skins"></div>
     <div class="lbl">PLAY ONLINE · UP TO 8 PLAYERS</div>
@@ -196,6 +203,17 @@
   const sc = $('suit');
   const spin = (t) => { if (!$('start').classList.contains('hidden')) { const r = sc.getBoundingClientRect(); Wreck.preview(sc, skin, t / 1000, Math.atan2(mouse[1] - (r.top + r.height * 0.6), mouse[0] - (r.left + r.width / 2)), 1); } requestAnimationFrame(spin); };
   requestAnimationFrame(spin);
+  // maps: your profile (this page) or one of the built-in levels
+  let mapId = (params.get('map') || '').replace(/[^a-z]/g, ''); if (!Wreck.maps.some((m) => m.id === mapId)) mapId = '';
+  const levelKey = () => (mapId ? 'map:' + mapId : user.toLowerCase());
+  const setMap = (id) => { mapId = id; Wreck.map = id || null; [...$('maps').children].forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === id)); $('title').textContent = id ? Wreck.maps.find((m) => m.id === id).name : user.toLowerCase() === 'singhaarav059' ? 'Wreck this profile' : `Wreck @${user}`; };
+  [{ id: '', name: 'This profile' }, ...Wreck.maps].forEach((m) => {
+    const b = document.createElement('button'); b.dataset.id = m.id; b.title = m.name; const cv = document.createElement('canvas'); cv.width = 208; cv.height = 130;
+    const span = document.createElement('span'); span.textContent = m.name; b.append(cv, span); b.onclick = () => setMap(m.id); $('maps').append(b);
+    if (m.id) setTimeout(() => { try { Wreck.mapThumb(m.id, cv); } catch {} }, 50);
+    else { const g = cv.getContext('2d'); g.fillStyle = '#f6f8fa'; g.fillRect(0, 0, 208, 130); g.fillStyle = '#1f2328'; g.fillRect(14, 16, 40, 40); g.fillStyle = '#d1d9e0'; for (let y = 20; y < 120; y += 12) g.fillRect(66, y, 120 - (y % 30), 5); }
+  });
+  setMap(mapId);
   $('who').addEventListener('submit', (e) => { e.preventDefault(); const u = e.target.u.value.trim(); if (u) location.search = '?user=' + encodeURIComponent(u); });
   // every player lays the page out at the same width online, so everyone gets the same level
   const pin = (on) => { document.documentElement.style.width = on ? '1280px' : ''; document.body.style.width = on ? '1280px' : ''; };
@@ -211,7 +229,7 @@
   const why = (e) => ({ full: 'This room is full.', 'peer-unavailable': 'No room with that code.', busy: 'Every quick-match room is full. Try again in a moment.', timeout: 'Could not reach the matchmaking service. Try again.' }[e?.message] || { 'peer-unavailable': 'No room with that code.', network: 'Network problem. Check your connection.', 'browser-incompatible': 'This browser cannot play online.' }[e?.type] || 'Could not connect. Try again.');
   const showLobby = (on) => { $('solo').hidden = on; $('lobby').hidden = !on; };
   WreckNet.init({
-    level: user.toLowerCase(),
+    level: levelKey,
     ui: {
       status: (t) => { $('status').textContent = t; $('status2').textContent = t; },
       lobby: (players, info) => {
@@ -231,7 +249,7 @@
   $('joinf').addEventListener('submit', (e) => { e.preventDefault(); const c = e.target.c.value.trim().toUpperCase(); if (!/^[A-Z0-9]{6}$/.test(c)) return busy(false, 'Room codes have 6 letters and digits.'); run(() => WreckNet.join(c, self())); });
   $('go').onclick = () => WreckNet.start();
   $('leave').onclick = () => WreckNet.leave();
-  $('copy').onclick = async () => { const u = `${location.origin}${location.pathname}?user=${encodeURIComponent(user)}&room=${WreckNet.room}`; try { await navigator.clipboard.writeText(u); $('copy').textContent = 'Link copied'; } catch { prompt('Copy this invite link', u); } setTimeout(() => ($('copy').textContent = 'Copy invite link'), 1600); };
+  $('copy').onclick = async () => { const u = `${location.origin}${location.pathname}?${mapId ? 'map=' + mapId : 'user=' + encodeURIComponent(user)}&room=${WreckNet.room}`; try { await navigator.clipboard.writeText(u); $('copy').textContent = 'Link copied'; } catch { prompt('Copy this invite link', u); } setTimeout(() => ($('copy').textContent = 'Copy invite link'), 1600); };
   const invite = (params.get('room') || '').toUpperCase();
   if (/^[A-Z0-9]{6}$/.test(invite) || /^QUICK\d$/.test(invite)) run(() => WreckNet.join(invite, self()));
 

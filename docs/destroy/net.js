@@ -7,7 +7,7 @@
   const PREFIX = 'wreck-sh-', MAX = 8, WIDTH = 1280;
   const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const SKIN_RE = /^#[0-9a-f]{6}$/i;
-  let peer = null, isHost = false, room = null, hostConn = null, started = false, level = '';
+  let peer = null, isHost = false, room = null, hostConn = null, started = false, level = () => '';
   const conns = new Map();            // host only: peer id -> connection
   const players = new Map();          // id -> { id, name, skin }
   let ui = { status() {}, lobby() {}, start() {}, left() {} };
@@ -51,7 +51,7 @@
     const now = performance.now(), r = rate.get(id) || { t: now, n: 0 }; if (now - r.t > 1000) { r.t = now; r.n = 0; } if (++r.n > 90) return; rate.set(id, r);
     if (m.t === 'hi') {
       players.set(id, { id, name: cleanName(m.name), skin: SKIN_RE.test(m.skin) ? m.skin : '#4f8cff' });
-      conns.get(id)?.send({ t: 'welcome', level, started, you: id });
+      conns.get(id)?.send({ t: 'welcome', level: level(), started, you: id });
       rosterOut(); return;
     }
     if (!players.has(id) || !['s', 'f', 'r', 'd', 'die'].includes(m.t)) return;
@@ -75,7 +75,7 @@
         if (m.t === 'full') { clearTimeout(t); reject(new Error('full')); leave(true); }
         else if (m.t === 'welcome') {
           clearTimeout(t);
-          if (m.level && m.level !== level) { location.href = `?user=${encodeURIComponent(m.level)}&room=${c}`; return; }
+          if (typeof m.level === 'string' && m.level !== level()) { const lv = m.level.slice(0, 60); location.href = (lv.startsWith('map:') ? `?map=${encodeURIComponent(lv.slice(4))}` : `?user=${encodeURIComponent(lv)}`) + `&room=${c}`; return; }
           attach(); resolve(c); if (m.started) ui.start();
         } else if (m.t === 'roster' && Array.isArray(m.players)) {
           players.clear();
@@ -119,7 +119,7 @@
   function startGame() { if (!isHost) return; started = true; for (const c of conns.values()) c.send({ t: 'go' }); ui.start(); }
 
   window.WreckNet = {
-    init(opts) { ui = { ...ui, ...opts.ui }; level = opts.level; },
+    init(opts) { ui = { ...ui, ...opts.ui }; level = typeof opts.level === 'function' ? opts.level : () => opts.level; },
     create: (self) => host(code(), self), join, quick, leave, start: startGame,
     get room() { return room; }, get isHost() { return isHost; }, get inRoom() { return !!peer; },
   };

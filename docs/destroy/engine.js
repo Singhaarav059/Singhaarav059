@@ -209,12 +209,13 @@
     for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) { const a = m.get(cy * 4096 + cx); if (!a) continue; for (const o of a) { if (o.dead || o._s === s) continue; o._s = s; if (fn(o) === false) return; } }
   }
   const glyphAt = (x, y) => { let r = null; q(S.L.gh, x, y, 0, 0, (g) => { if (x >= g.x && x <= g.x + g.w && y >= g.y && y <= g.y + g.h) { r = g; return false; } }); return r; };
-  function boxAt(x, y, vis) { let r = null; q(S.L.bh, x, y, 0, 0, (b) => { if ((!vis || b.vis) && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h && (!r || b.w * b.h < r.w * r.h)) r = b; }); return r; }
+  function boxAt(x, y, vis) { let r = null; q(S.L.bh, x, y, 0, 0, (b) => { if ((!vis || (b.vis && b.w * b.h <= 30000 && b.w < S.L.vw * 0.6)) && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h && (!r || b.w * b.h < r.w * r.h)) r = b; }); return r; }
   // projectiles fly over plain page background and stop on content: letters, elements, pictures, rubble
   function contentAt(x, y) {
     const m = solid(x, y); if (!m) return null; if (m === 2 || y >= S.L.WH - 1 || x <= 0 || x >= S.L.vw - 1) return true;
     const g = glyphAt(x, y); if (g) return g;
-    const b = boxAt(x, y, true); if (b && b.w * b.h < S.vArea * 0.4) return b; return S.L.art ? true : null;
+    // only element-sized things stop bullets (buttons, cards, pictures, inputs); big containers are paper they pass through
+    const b = boxAt(x, y, true); if (b && b.w * b.h <= 30000 && b.w < S.L.vw * 0.6) return b; return S.L.art ? true : null;
   }
   function colorAt(x, y) { const g = Math.random() < 0.35 && glyphAt(x, y); if (g) return g.color; const b = boxAt(x, y); return b ? b.fill || (b.grad && b.grad[0]) || b.stroke || b.under : S.L.bg; }
 
@@ -300,7 +301,7 @@
     sfx('crash', 0.7);
   }
   function knock(g, vx, vy, burnt, spin) {
-    if (g.dead) return; g.dead = true; S.stats.letters++; S.extra += (g.w * g.h) / (MC * MC) * 0.6;
+    if (g.dead) return; g.dead = true; S.stats.letters++; gainXP(1); S.extra += (g.w * g.h) / (MC * MC) * 0.6;
     onTiles(g.y, g.y + g.h, (c) => { c.globalCompositeOperation = 'source-atop'; c.fillStyle = g.under; c.fillRect(g.x - 0.5, g.y, g.w + 1, g.h); });
     if (S.bodies.length >= MAX_BODIES) settleOldest();
     S.bodies.push({ k: 'g', ch: g.ch, font: g.font, color: burnt ? '#3b2a2a' : g.color, x: g.x + g.w / 2, y: g.y + g.h / 2, hw: g.w / 2, hh: g.h / 2 * 0.62, by: baseline(S.L.tiles[0].ctx, g) - (g.y + g.h / 2), vx, vy, a: 0, va: spin ?? rnd(-12, 12), rest: 0 });
@@ -308,7 +309,7 @@
   }
   function detach(b, hx, hy, force) {
     if (b.dead || b.w > S.L.vw * 0.9 || b.w * b.h > 60000) return;
-    b.dead = true; S.stats.elements++; S.extra += (b.w * b.h) / (MC * MC) * 0.5;
+    b.dead = true; S.stats.elements++; gainXP(6); S.extra += (b.w * b.h) / (MC * MC) * 0.5;
     const sprite = grab(b.x, b.y, b.w, b.h);
     // everything drawn inside it leaves with it
     q(S.L.gh, b.x, b.y, b.w, b.h, (g) => { if (g.x >= b.x - 1 && g.x + g.w <= b.x + b.w + 1 && g.y >= b.y - 1 && g.y + g.h <= b.y + b.h + 1) g.dead = true; });
@@ -352,7 +353,7 @@
   function settleOldest() { const i = S.bodies.findIndex((o) => o.rest > 0); const o = S.bodies.splice(i < 0 ? 0 : i, 1)[0]; if (o) settle(o); }
 
   function explode(x, y, r, power, o = {}) {
-    S.stats.explosions++;
+    S.stats.explosions++; gainXP(3);
     carve(x, y, r, { shards: Math.round((r / 10) * power), force: 520 * power, power, knockR: 1.35, burn: true });
     for (const b of S.bodies) { const dx = b.x - x, dy = b.y - y, d = Math.hypot(dx, dy) + 1, R = r * 2.4; if (d < R) { const k = 1 - d / R; b.vx += (dx / d) * 900 * k * power; b.vy += (dy / d) * 800 * k * power - 200 * k; b.va += rnd(-12, 12) * k; b.rest = 0; } }
     for (const f of S.fx) if (f.k === 'sand' || f.k === 'bit') { const dx = f.x - x, dy = f.y - y, d = Math.hypot(dx, dy) + 1; if (d < r * 2) { f.vx += (dx / d) * 500; f.vy += (dy / d) * 500 - 100; f.stuck = false; } }
@@ -401,6 +402,7 @@
     else if (kind === 'wand') { tone(0.3, 'triangle', 900, 1800, 0.12); tone(0.3, 'sine', 1400, 2600, 0.06); }
     else if (kind === 'sand') noise(0.6, 'highpass', 2500, 0.3, 0.12);
     else if (kind === 'beep') tone(0.06, 'square', 1200, 1200, 0.05);
+    else if (kind === 'rank') { tone(0.12, 'square', 523, 523, 0.08); setTimeout(() => tone(0.12, 'square', 659, 659, 0.08), 110); setTimeout(() => tone(0.25, 'square', 784, 1046, 0.09), 220); }
     else if (kind === 'charge') { tone(0.3, 'sawtooth', 200, 1800, 0.12); tone(0.3, 'sine', 400, 2400, 0.08); }
     else if (kind === 'pump') { noise(0.05, 'bandpass', 1800, 2, 0.35); setTimeout(() => sfx('tick'), 70); }
     else if (kind === 'hurt') { tone(0.12, 'square', 300, 120, 0.15); noise(0.08, 'bandpass', 900, 1, 0.3); }
@@ -629,13 +631,20 @@
   function stepShots(dt) {
     const L = S.L;
     for (let i = S.shots.length - 1; i >= 0; i--) {
-      const s = S.shots[i]; s.life -= dt; let gone = s.life <= 0;
+      const s = S.shots[i]; s.life -= dt; let gone = s.life <= 0; S.cur = s.owner || null;
       if (s.k === 'b') {
         const steps = Math.max(1, Math.ceil(Math.hypot(s.vx, s.vy) * dt / 4));
         for (let k = 0; k < steps && !gone; k++) {
           s.x += s.vx * dt / steps; s.y += s.vy * dt / steps;
           const sp = Math.hypot(s.vx, s.vy), dx = s.vx / sp, dy = s.vy / sp;
-          if (s.range != null && (s.range -= sp * dt / steps) <= 0) { if (solid(s.x, s.y)) paperHole(s.x, s.y, dx, dy, s.heavy ? 2.2 : s.w === 'drone' ? 3.6 : 2.8); gone = true; break; }
+          if (s.range != null && (s.range -= sp * dt / steps) <= 0) {   // landed on the cursor: hit whatever is there
+            const body = bodyAt(s.x, s.y, s), hit = !body && contentAt(s.x, s.y);
+            if (body) hitBody(body, s, dx, dy);
+            else if (hit && hit.ch) { knock(hit, dx * rnd(230, 430) + rnd(-40, 40), dy * rnd(150, 350) - rnd(90, 200), false, rnd(-22, 22)); inkPop(s.x, s.y, dx, dy, hit.color); }
+            else if (hit && hit !== true && hit !== s.last) { impact(s.x, s.y, dx, dy, hit.fill || hit.stroke || '#ffffff'); if (++hit.hits >= (hit.w * hit.h < 6000 ? 3 : hit.w * hit.h < 30000 ? 5 : 8)) detach(hit, s.x - dx * 20, s.y - dy * 20, 300); }
+            else if (solid(s.x, s.y)) paperHole(s.x, s.y, dx, dy, s.heavy ? 2.2 : s.w === 'drone' ? 3.6 : 2.8);
+            gone = true; break;
+          }
           if (s.x < 0 || s.x > L.vw || s.y > L.WH || s.y < -400) { gone = true; break; }
           const who = playerAt(s.x, s.y, s.owner);
           if (who) { impact(s.x, s.y, dx, dy, who.skin || Wreck.skin); if (who === S.p) hurt(DMG[s.w] ?? 10, s.owner, s.w); gone = true; break; }
@@ -729,7 +738,7 @@
   }
 
   // ------------------------------------------------------------------ bodies and particles
-  function stepBodies(dt) {
+  function stepBodies(dt) { S.cur = null;
     const L = S.L;
     for (let i = S.bodies.length - 1; i >= 0; i--) {
       const o = S.bodies[i];
@@ -776,6 +785,7 @@
         if (!f.stuck) { f.vy += G * 0.8 * dt; if (solid(f.x + f.vx * dt, f.y + f.vy * dt)) { f.stuck = true; f.vx = f.vy = 0; } }
         else { if (Math.random() < dt * 1.2) carve(f.x, f.y + 1, 2.5, { bits: 0, knock: false, detach: false, burn: true }); if (Math.random() < dt * 4 && S.fx.length < MAX_FX) S.fx.push({ k: 'fire', x: f.x + rnd(-2, 2), y: f.y - 2, vx: 0, vy: -40, s: pick([1, 2]), life: 0.3, t: 0 }); if (!solid(f.x, f.y + 2)) f.stuck = false; }
       } else if (k === 'flame') {
+        S.cur = f.owner || null;
         if (f.owner !== me() && S.p.alive && Math.abs(f.x - S.p.x) < 9 && f.y < S.p.y && f.y > S.p.y - 56) hurt(72 * dt, f.owner, 'flame');
         f.vx *= 1 - dt * 2; f.vy = f.vy * (1 - dt * 2) - 220 * dt;
         const g = glyphAt(f.x, f.y);
@@ -810,21 +820,39 @@
 
   // the powered suit, built per plate colour
   const suits = new Map();
-  function suit(plate) {
-    if (suits.has(plate)) return suits.get(plate);
-    const base = plate, b1 = shadeHex(base, 1.35), b2 = shadeHex(base, 0.7), b3 = shadeHex(base, 0.5);
-    const gm = '#3b4054', gm1 = '#6a7190', gm2 = '#262a38', glow = shadeHex(base, 1.75), glow1 = '#f2fdff';
+  // original suit designs; each is a helmet (and sometimes fixed plating) on the same armoured body
+  const SKINS = [
+    { id: 'standard', name: 'Standard', rank: 0 },
+    { id: 'ronin', name: 'Ronin', rank: 1 },
+    { id: 'diver', name: 'Diver', rank: 2 },
+    { id: 'robot', name: 'Robot', rank: 3 },
+    { id: 'astro', name: 'Astro', rank: 4 },
+    { id: 'sentinel', name: 'Sentinel', rank: 5 },
+    { id: 'phantom', name: 'Phantom', rank: 7, plate: '#2a2d40' },
+    { id: 'juggernaut', name: 'Juggernaut', rank: 9 },
+    { id: 'golden', name: 'Golden', rank: 11, plate: '#e2a93b' },
+  ];
+  const skinOf = (id) => SKINS.find((s) => s.id === id) || SKINS[0];
+  function helmet(id, c, k) {
+    const { base, b1, b2, b3, gm, gm1, gm2, glow, glow1 } = k;
+    const dome = () => { Pf(c, base, [[3, 5], [6, 1], [11, 0], [14, 2], [16, 6], [16, 12], [14, 15], [8, 16], [4, 14], [3, 9]]); Pf(c, b2, [[3, 9], [4, 14], [8, 16], [9, 14], [6, 12], [5, 8]]); Rf(c, b1, 8, 1, 4, 1); Rf(c, b1, 12, 2, 2, 2); Rf(c, '#ffffff', 10, 1, 1, 1); };
+    Rf(c, gm2, 6, 13, 5, 5); Rf(c, gm, 7, 14, 3, 3);
+    if (id === 'ronin') { dome(); Pf(c, '#e8b04a', [[6, 2], [2, -4], [4, -4], [8, 1]]); Pf(c, '#e8b04a', [[10, 1], [14, -4], [16, -4], [12, 2]]); Rf(c, '#fff1b0', 3, -4, 1, 1); Rf(c, '#fff1b0', 15, -4, 1, 1); Pf(c, gm2, [[9, 7], [16, 7], [16, 9], [10, 9]]); Rf(c, glow, 10, 7, 6, 1); Pf(c, gm2, [[8, 10], [16, 10], [15, 15], [9, 15]]); Rf(c, gm1, 10, 12, 5, 1); Rf(c, gm1, 10, 14, 4, 1); Pf(c, b2, [[2, 8], [5, 7], [5, 14], [2, 13]]); }
+    else if (id === 'diver') { Ef(c, base, 9, 8, 8, 8); Ef(c, b2, 7, 10, 5, 5); Ef(c, '#9fd8ff', 11, 8, 5, 5); Ef(c, '#1b2440', 11, 8, 4, 4); Rf(c, glow1, 10, 7, 1, 1); Rf(c, glow1, 13, 7, 1, 1); Rf(c, '#ffffff', 9, 5, 2, 1); Rf(c, b1, 6, 1, 5, 1); [[3, 8], [9, 1], [16, 8], [9, 15]].forEach(([x, y]) => Rf(c, gm1, x, y, 1, 1)); }
+    else if (id === 'robot') { Rf(c, base, 3, 2, 14, 13); Rf(c, b1, 3, 2, 14, 2); Rf(c, b2, 3, 12, 14, 3); Rf(c, gm1, 9, -3, 1, 5); Rf(c, '#ff5d73', 8, -4, 3, 2); Rf(c, '#0f2b2a', 6, 5, 10, 7); Rf(c, '#2fd08a', 8, 7, 2, 2); Rf(c, '#2fd08a', 12, 7, 2, 2); Rf(c, '#2fd08a', 9, 10, 4, 1); Rf(c, gm1, 2, 7, 1, 3); Rf(c, gm1, 17, 7, 1, 3); }
+    else if (id === 'astro') { Ef(c, '#e8ecf8', 9, 8, 7.5, 8); Pf(c, '#c3c9df', [[2, 9], [4, 14], [8, 16], [9, 14], [5, 11]]); Ef(c, '#e8b04a', 11, 8, 5, 4.5); Ef(c, '#b8822a', 10, 10, 3, 2); Rf(c, '#fff6c9', 12, 6, 3, 1); Rf(c, base, 3, 7, 2, 4); Rf(c, glow, 3, 8, 1, 1); Rf(c, '#ffffff', 7, 1, 3, 1); }
+    else if (id === 'sentinel') { dome(); Pf(c, glow, [[4, 3], [8, -4], [11, -3], [8, 2]]); Pf(c, glow1, [[7, -2], [8, -4], [9, -3]]); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, glow, 10, 8, 6, 1); Pf(c, b2, [[12, 11], [16, 11], [15, 15], [12, 15]]); }
+    else if (id === 'phantom') { dome(); Rf(c, '#ff3d7f', 11, 8, 2, 1); Rf(c, '#ff3d7f', 14, 8, 2, 1); Rf(c, '#ffb3cf', 11, 8, 1, 1); Rf(c, '#ffb3cf', 14, 8, 1, 1); Rf(c, b3, 6, 6, 1, 7); }
+    else if (id === 'juggernaut') { Pf(c, base, [[2, 3], [15, 2], [17, 6], [17, 14], [13, 16], [4, 16], [2, 12]]); Rf(c, b1, 3, 3, 13, 2); Rf(c, b2, 3, 7, 14, 2); Rf(c, gm2, 9, 9, 8, 2); Rf(c, glow, 10, 9, 6, 1); Rf(c, b2, 2, 12, 15, 2); Rf(c, gm1, 4, 13, 1, 1); Rf(c, gm1, 7, 13, 1, 1); Rf(c, gm1, 10, 13, 1, 1); }
+    else { dome(); Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, glow, 10, 8, 6, 1); Rf(c, glow1, 13, 8, 2, 1); Rf(c, b3, 6, 6, 1, 7); Rf(c, gm1, 4, 9, 2, 3); Rf(c, glow, 4, 10, 1, 1); Rf(c, b2, 12, 12, 3, 1); Rf(c, gm2, 13, 13, 2, 1); }
+  }
+  function suit(plate, skinId = 'standard') {
+    const sk = skinOf(skinId), key = plate + sk.id; if (suits.has(key)) return suits.get(key);
+    const base = sk.plate || plate, b1 = shadeHex(base, 1.35), b2 = shadeHex(base, 0.7), b3 = shadeHex(base, 0.5);
+    const gm = '#3b4054', gm1 = '#6a7190', gm2 = '#262a38', glow = sk.id === 'phantom' ? shadeHex(plate, 1.6) : shadeHex(base, 1.75), glow1 = '#f2fdff';
     const part = (w, h, jx, jy, paint) => { const s = pixel(w, h, paint); return { cv: s.cv, jx: jx + 1, jy: jy + 1 }; };
     const P = {
-      head: part(16, 18, 8, 17, (c) => {
-        Rf(c, gm2, 6, 13, 5, 5); Rf(c, gm, 7, 14, 3, 3);
-        Pf(c, base, [[3, 5], [6, 1], [11, 0], [14, 2], [16, 6], [16, 12], [14, 15], [8, 16], [4, 14], [3, 9]]);
-        Pf(c, b2, [[3, 9], [4, 14], [8, 16], [9, 14], [6, 12], [5, 8]]);
-        Rf(c, b1, 8, 1, 4, 1); Rf(c, b1, 12, 2, 2, 2); Rf(c, '#ffffff', 10, 1, 1, 1);
-        Pf(c, gm2, [[9, 7], [16, 7], [16, 10], [10, 10]]); Rf(c, glow, 10, 8, 6, 1); Rf(c, glow1, 13, 8, 2, 1);
-        Rf(c, b3, 6, 6, 1, 7); Rf(c, gm1, 4, 9, 2, 3); Rf(c, glow, 4, 10, 1, 1);
-        Rf(c, b2, 12, 12, 3, 1); Rf(c, gm2, 13, 13, 2, 1);
-      }),
+      head: part(18, 22, 8, 21, (c) => { c.translate(0, 4); helmet(sk.id, c, { base, b1, b2, b3, gm, gm1, gm2, glow, glow1 }); }),
       torso: part(17, 21, 8, 0, (c) => {
         Pf(c, gm, [[2, 1], [15, 1], [14, 16], [3, 16]]);
         Pf(c, base, [[2, 2], [15, 2], [14, 11], [11, 14], [6, 14], [3, 11]]);
@@ -845,7 +873,7 @@
       pack: part(8, 14, 4, 0, (c) => { Rf(c, gm, 0, 0, 8, 12); Rf(c, gm2, 0, 0, 2, 12); Rf(c, base, 2, 1, 5, 3); Rf(c, gm1, 6, 4, 1, 7); Rf(c, gm2, 1, 11, 6, 3); Rf(c, glow, 2, 12, 4, 1); }),
       glow,
     };
-    suits.set(plate, P); return P;
+    suits.set(key, P); return P;
   }
 
   // weapons in grip coordinates: grip at 0,0, barrel along +x; mx/my is the muzzle
@@ -875,8 +903,8 @@
   function gunSprite(id) { const g = GUN_ART[id] || GUN_ART.pistol; if (!g.s) g.s = pixel(g.w, g.h, g.paint, g.ox, g.oy); return g; }
 
   // draw a suited player; P.aim is the world aim, feet at P.x, P.y
-  function drawSuit(c, P, plate) {
-    const parts = suit(plate), f = P.face, w = W[P.weapon] || W[0], g = gunSprite(w.id);
+  function drawSuit(c, P, plate, skinId) {
+    const parts = suit(plate, skinId), f = P.face, w = W[P.weapon] || W[0], g = gunSprite(w.id);
     const lim = (pt, ax, ay, bx, by) => { const a = Math.atan2(by - ay, bx - ax) - Math.PI / 2; c.save(); c.translate(Math.round(ax), Math.round(ay)); c.rotate(a); c.drawImage(pt.cv, -pt.jx, -pt.jy); c.restore(); };
     c.save(); c.translate(Math.round(P.x), Math.round(P.y)); if (f < 0) c.scale(-1, 1);
     const air = !P.grounded, aim = f < 0 ? Math.PI - P.aim : P.aim, spd = Math.min(1, Math.abs(P.vx) / RUN), bob = air ? 0 : Math.abs(Math.sin(P.run)) * spd * 1.5, sq = (P.land || 0) * 4;
@@ -906,12 +934,12 @@
   }
 
   // a suit standing on a little platform, for the start screen
-  function preview(canvas, plate, t, aim, weapon = 1) {
+  function preview(canvas, plate, t, aim, weapon = 1, skinId) {
     const c = canvas.getContext('2d'); c.imageSmoothingEnabled = false; c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, canvas.width, canvas.height);
     const k = Math.floor(canvas.height / 80) || 1; c.scale(k, k);
     const w = canvas.width / k, h = canvas.height / k, P = { x: w / 2, y: h - 10, vx: 0, grounded: true, run: 0, land: 0, flip: -1, recoil: 0, kr: 0, weapon, face: Math.cos(aim) >= 0 ? 1 : -1, aim, muzzle: 0 };
     const S0 = S; if (!S) S = { muzzleSize: 1 };
-    try { Rf(c, '#07080f', w / 2 - 24, h - 10, 48, 4); Rf(c, '#3c3f60', w / 2 - 23, h - 10, 46, 1); P.y -= Math.round(Math.abs(Math.sin(t * 2)) * 1); drawSuit(c, P, plate); } finally { S = S0; }
+    try { Rf(c, '#07080f', w / 2 - 24, h - 10, 48, 4); Rf(c, '#3c3f60', w / 2 - 23, h - 10, 46, 1); P.y -= Math.round(Math.abs(Math.sin(t * 2)) * 1); drawSuit(c, P, plate, skinId); } finally { S = S0; }
   }
 
   // ------------------------------------------------------------------ maps: original themed levels, generated from a fixed seed
@@ -1106,7 +1134,7 @@
     }
     for (const d of S.drones) drawDrone(v, d);
     for (const b of S.beams) { const e = b.t / 0.4, w = Math.max(1, Math.round(12 * (1 - e))); v.lineCap = 'butt'; v.strokeStyle = '#2b5bff'; v.lineWidth = w + 4; v.globalAlpha = 1 - e; v.beginPath(); v.moveTo(b.x0, b.y0); v.lineTo(b.x1, b.y1); v.stroke(); v.strokeStyle = '#57e3ff'; v.lineWidth = w; v.stroke(); v.strokeStyle = '#ffffff'; v.lineWidth = Math.max(1, w / 3); v.stroke(); v.globalAlpha = 1; }
-    for (const r of S.remotes.values()) if (r.alive) drawPlayer(v, r, r.skin, r.name);
+    for (const r of S.remotes.values()) if (r.alive) drawPlayer(v, r, r.skin, r.name, r.suit, r.rank);
     if (S.p.alive) drawPlayer(v);
     if (!S.touch) { const x = S.aimX | 0, y = S.aimY | 0; v.fillStyle = OUT; v.fillRect(x - 6, y - 1, 13, 3); v.fillRect(x - 1, y - 6, 3, 13); v.fillStyle = '#ffffff'; v.fillRect(x - 5, y, 4, 1); v.fillRect(x + 2, y, 4, 1); v.fillRect(x, y - 5, 1, 4); v.fillRect(x, y + 2, 1, 4); }
     const c = S.ctx, sh = S.trauma * S.trauma * 16, ox = Math.round((rnd(-sh, sh) + S.ckx) * S.k) * S.dpr, oy = Math.round((rnd(-sh, sh) + S.cky) * S.k) * S.dpr;
@@ -1130,11 +1158,12 @@
     if (d.aim != null) { v.fillStyle = OUT; v.fillRect(x + Math.cos(d.aim) * 6 - 1, y + 3 + Math.sin(d.aim) * 3, 3, 3); }
   }
   function ik(ax, ay, tx, ty, l1, l2, s) { let dx = tx - ax, dy = ty - ay, d = Math.hypot(dx, dy); const m = l1 + l2 - 0.01; if (d > m) { dx *= m / d; dy *= m / d; d = m; } const a = Math.atan2(dy, dx), c = clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1), b = Math.acos(c) * s; return [ax + Math.cos(a - b) * l1, ay + Math.sin(a - b) * l1, ax + dx, ay + dy]; }
-  function drawPlayer(v, P = S.p, skin = Wreck.skin, name) {
+  function drawPlayer(v, P = S.p, skin = Wreck.skin, name, suitId = Wreck.suit, rank) {
     if (P.shield > 0 && (S.frame >> 2) % 2) v.globalAlpha = 0.45;
-    drawSuit(v, P, /^#[0-9a-f]{6}$/i.test(skin) ? skin : '#5b6bd6'); v.globalAlpha = 1;
-    if (P.hurtT > 0 && (S.frame >> 1) % 2) { v.globalCompositeOperation = 'lighter'; v.globalAlpha = 0.35; drawSuit(v, P, '#ff3040'); v.globalAlpha = 1; v.globalCompositeOperation = 'source-over'; }
+    drawSuit(v, P, /^#[0-9a-f]{6}$/i.test(skin) ? skin : '#5b6bd6', suitId); v.globalAlpha = 1;
+    if (P.hurtT > 0 && (S.frame >> 1) % 2) { v.globalCompositeOperation = 'lighter'; v.globalAlpha = 0.35; drawSuit(v, P, '#ff3040', suitId); v.globalAlpha = 1; v.globalCompositeOperation = 'source-over'; }
     if (Wreck.net && name && P.hp < MAX_HP) { v.fillStyle = OUT; v.fillRect(P.x - 15, P.y - 80, 30, 5); v.fillStyle = P.hp > 50 ? '#2fd08a' : P.hp > 25 ? '#ffb020' : '#ff4d5e'; v.fillRect(P.x - 14, P.y - 79, Math.max(0, 28 * P.hp / MAX_HP), 3); }
+    if (name && rank != null) { const tw = (v.font = '10px Silkscreen, ui-monospace, monospace', v.measureText(name).width); v.drawImage(badge(rank, 12), Math.round(P.x - tw / 2 - 15), P.y - 76); }
     if (name) { v.font = '10px Silkscreen, ui-monospace, monospace'; v.textAlign = 'center'; v.textBaseline = 'alphabetic'; v.lineWidth = 3; v.strokeStyle = OUT; v.strokeText(name, P.x, P.y - 66); v.fillStyle = '#ffffff'; v.fillText(name, P.x, P.y - 66); v.textAlign = 'left'; }
   }
 
@@ -1162,6 +1191,10 @@
   .feed{position:fixed;right:14px;top:58px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:none}.kf{padding:5px 9px;font-size:11px}
   .dead{white-space:pre-line;position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:26px;color:#ff8a9a;text-shadow:3px 3px 0 #07080f;pointer-events:none;text-align:center}
   .slot .cdv{position:absolute;inset:auto 0 0 0;height:0;background:rgba(7,8,15,.7)}
+  .xpp{position:fixed;left:50%;top:14px;transform:translateX(-50%);padding:5px 10px;font-size:12px;color:#ffe066;pointer-events:none;transition:opacity .4s}
+  .promo{position:fixed;left:50%;top:22%;transform:translateX(-50%);display:flex;gap:12px;align-items:center;padding:12px 16px;pointer-events:none;animation:pr 3.2s ease both}
+  .promo canvas{width:48px;height:48px;image-rendering:pixelated}.promo b{display:block;font-size:20px;font-weight:400;color:#ffe066}.promo small{display:block;font-size:10px;color:#a4a8c8}
+  @keyframes pr{0%{opacity:0;transform:translate(-50%,-12px) scale(.9)}10%{opacity:1;transform:translate(-50%,0) scale(1)}85%{opacity:1}100%{opacity:0}}
   .wname{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);padding:6px 12px;font-size:14px;pointer-events:none;transition:opacity .3s}
   .help{position:fixed;left:14px;bottom:12px;padding:9px 11px;font-size:11px;line-height:2;pointer-events:none;transition:opacity .8s}
   .help b{display:inline-block;min-width:16px;text-align:center;background:#0b0c14;border-radius:2px;padding:0 4px;margin-right:3px;color:#ffe066;font-weight:400}
@@ -1187,6 +1220,7 @@
       <div class="pn wname" style="opacity:0"></div>
       <div class="pn hp" style="display:none"><span>HP</span><div class="hbar"><i></i></div><b class="hpn">100</b></div>
       <div class="feed"></div>
+      <div class="pn xpp" style="opacity:0"></div>
       <div class="dead" style="display:none"></div>
       <div class="pn wbar"></div>
       <div class="pn help"><b>A</b><b>D</b>run <b>W</b>jump · tap to flip · hold to fly<br><b>S</b>drop <b>Click</b>shoot <b>Right</b>grenade <b>1-0</b>weapons<br><b>Esc</b>pause</div>
@@ -1202,7 +1236,7 @@
     root.querySelectorAll('button').forEach((b) => b.addEventListener('pointerdown', (e) => e.stopPropagation()));
     document.documentElement.appendChild(host);
     const nslot = bar.lastChild; const cdv = document.createElement('div'); cdv.className = 'cdv'; nslot.appendChild(cdv);
-    return { host, root, $, pct: $('.pct'), bar: $('.bar i'), wname: $('.wname'), slots: [...bar.children], help: $('.help'), cdv, hpw: $('.hp'), hbar: $('.hbar i'), hpn: $('.hpn'), dead: $('.dead') };
+    return { host, root, $, pct: $('.pct'), bar: $('.bar i'), wname: $('.wname'), slots: [...bar.children], help: $('.help'), cdv, xp: $('.xpp'), hpw: $('.hp'), hbar: $('.hbar i'), hpn: $('.hpn'), dead: $('.dead') };
   }
   function setWeapon(i) {
     const P = S.p; if (P.weapon !== i) { P.kr = -0.9; P.krv = 0; sfx('tick'); } P.weapon = i; P.cd = Math.max(P.cd, 0.12); P.charge = -1;
@@ -1224,13 +1258,15 @@
       S.hud.dead.style.display = S.p.alive ? 'none' : ''; if (!S.p.alive) S.hud.dead.textContent = `Destroyed by ${S.p.lastBy && S.p.lastBy !== me() ? nameOf(S.p.lastBy) : 'yourself'}\nRespawning in ${Math.max(1, Math.ceil(S.p.respawnT))}`;
     }
     if (S.time > 12 || S.stats.shots > 30) S.hud.help.style.opacity = '0';
-    if (!S.done && p >= 0.7) { S.done = true; overlay('done'); }
+    for (const [m, xp] of [[0.25, 40], [0.5, 80]]) if (p >= m && !(S.miles || (S.miles = {}))[m]) { S.miles[m] = 1; S.cur = null; gainXP(xp); }
+    if (!S.done && p >= 0.7) { S.done = true; S.cur = null; gainXP(250); overlay('done'); }
+    if (S.xpT > 0 && (S.xpT -= dt) <= 0) { S.xpBuf = 0; S.hud.xp.style.opacity = '0'; } else if (S.xpBuf) { S.hud.xp.textContent = `+${S.xpBuf} XP`; S.hud.xp.style.opacity = '1'; }
   }
   function overlay(kind) {
     S.hud.root.querySelector('.ov')?.remove();
     const d = document.createElement('div'); d.className = 'ov';
     if (kind === 'pause') d.innerHTML = `<div class="pn"><h2>Paused</h2><p>${location.hostname || 'This page'} is waiting.</p><div class="row"><button class="a">Resume</button><button class="b">Rebuild</button><button class="c">Exit</button></div></div>`;
-    else { const t = Math.round(S.time); const st = [['Letters knocked off', S.stats.letters], ['Elements broken', S.stats.elements], ['Explosions', S.stats.explosions], ['Eaten by black holes', S.stats.eaten], ['Shots fired', S.stats.shots], ['Time', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`]]; d.innerHTML = `<div class="pn"><h2>Website destroyed</h2><p>${location.hostname || 'This page'} never stood a chance.</p><div class="st">${st.map(([k, v]) => `<span>${k}</span><span class="v">${typeof v === 'number' ? v.toLocaleString() : v}</span>`).join('')}</div><div class="row"><button class="a">Keep going</button><button class="b go">Rebuild</button><button class="c">Exit</button></div></div>`; }
+    else { const t = Math.round(S.time); const st = [['XP earned', S.xpGain || 0], ['Rank', Wreck.progress().name], ['Letters knocked off', S.stats.letters], ['Elements broken', S.stats.elements], ['Explosions', S.stats.explosions], ['Eaten by black holes', S.stats.eaten], ['Shots fired', S.stats.shots], ['Time', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`]]; d.innerHTML = `<div class="pn"><h2>Website destroyed</h2><p>${location.hostname || 'This page'} never stood a chance.</p><div class="st">${st.map(([k, v]) => `<span>${k}</span><span class="v">${typeof v === 'number' ? v.toLocaleString() : v}</span>`).join('')}</div><div class="row"><button class="a">Keep going</button><button class="b go">Rebuild</button><button class="c">Exit</button></div></div>`; }
     d.querySelector('.a').onclick = () => { d.remove(); S.paused = false; }; d.querySelector('.b').onclick = () => { d.remove(); S.paused = false; rebuild(); }; d.querySelector('.c').onclick = stop;
     d.addEventListener('pointerdown', (e) => e.stopPropagation());
     S.paused = true; S.in.fire = false; S.hud.root.appendChild(d);
@@ -1284,6 +1320,52 @@
   }
   function touchUp(e) { for (const side of ['l', 'r']) { const s = S.sticks[side]; if (!s || (e && e.pointerId !== undefined && s.id !== e.pointerId)) continue; s.el.style.display = 'none'; S.sticks[side] = null; if (side === 'l') S.in.left = S.in.right = S.in.jump = S.in.down = false; else S.in.fire = false; } }
 
+  // ------------------------------------------------------------------ ranks and XP (kept in this browser)
+  const RANKS = [['Recruit', 0], ['Rookie', 300], ['Scrapper', 800], ['Breaker', 1500], ['Demolisher', 2500], ['Wrecker', 4000], ['Sapper', 6000], ['Bombardier', 9000], ['Siege Master', 13000], ['Annihilator', 18000], ['Worldbreaker', 25000], ['Legend', 35000]];
+  const XP_KEY = 'wreck-xp';
+  let xpTotal = 0; try { xpTotal = Math.max(0, parseInt(localStorage.getItem(XP_KEY), 10) || 0); } catch {}
+  const rankOf = (xp) => { let r = 0; RANKS.forEach(([, need], i) => { if (xp >= need) r = i; }); return r; };
+  let saveT = 0;
+  function gainXP(n, why) {
+    if (!S || !(n > 0) || (S.cur && S.cur !== me())) return;   // only what you destroyed counts
+    const before = rankOf(xpTotal); xpTotal += n; S.xpGain = (S.xpGain || 0) + n; S.xpBuf = (S.xpBuf || 0) + n; S.xpT = 1.2;
+    if (performance.now() - saveT > 1500) saveXP();
+    const after = rankOf(xpTotal); if (after > before) promote(after);
+  }
+  function saveXP() { saveT = performance.now(); try { localStorage.setItem(XP_KEY, String(xpTotal)); } catch {} }
+  function promote(r) {
+    saveXP(); sfx('rank');
+    const unlocked = SKINS.filter((s) => s.rank === r).map((s) => s.name);
+    const d = document.createElement('div'); d.className = 'promo pn';
+    d.innerHTML = `<canvas width="48" height="48"></canvas><div><small>Promoted to</small><b>${RANKS[r][0]}</b>${unlocked.length ? `<small>${unlocked.join(' and ')} suit unlocked</small>` : ''}</div>`;
+    d.querySelector('canvas').getContext('2d').drawImage(badge(r, 48), 0, 0);
+    S.hud.root.appendChild(d); setTimeout(() => d.remove(), 3200);
+    Wreck.onRank?.(r);
+  }
+  // pixel rank badges: chevrons, then stripes with a star, then stars, then a wreath
+  const badges = new Map();
+  function badge(r, size) {
+    const k = r + ':' + size; if (badges.has(k)) return badges.get(k);
+    const s = pixel(16, 16, (c) => {
+      const gold = r >= 10 ? '#ffd24a' : r >= 6 ? '#e8b04a' : '#c9cde6', dark = r >= 6 ? '#8a5a12' : '#4a4f6e';
+      Pf(c, '#1c1f2e', [[1, 1], [15, 1], [15, 11], [8, 15], [1, 11]]); Pf(c, dark, [[2, 2], [14, 2], [14, 10], [8, 14], [2, 10]]);
+      const chev = (y) => { Pf(c, gold, [[3, y], [8, y + 3], [13, y], [13, y + 2], [8, y + 5], [3, y + 2]]); };
+      const star = (x, y, z = 1) => { Pf(c, gold, [[x, y - 3 * z], [x + 1 * z, y - 1 * z], [x + 3 * z, y - 1 * z], [x + 1.5 * z, y + 0.5 * z], [x + 2 * z, y + 3 * z], [x, y + 1.5 * z], [x - 2 * z, y + 3 * z], [x - 1.5 * z, y + 0.5 * z], [x - 3 * z, y - 1 * z], [x - 1 * z, y - 1 * z]]); };
+      if (r === 0) Rf(c, gold, 5, 7, 6, 2);
+      else if (r <= 3) for (let i = 0; i < r; i++) chev(3 + i * 3);
+      else if (r <= 5) { chev(7); chev(10); star(8, 5, 0.8); if (r === 5) Rf(c, gold, 4, 3, 8, 1); }
+      else if (r <= 9) { const n = r - 5; for (let i = 0; i < n; i++) star(n === 1 ? 8 : 4 + i * (8 / (n - 1)), 7, n > 2 ? 0.75 : 1); }
+      else { star(8, 6, 1.3); Pf(c, gold, [[3, 10], [5, 13], [8, 14], [11, 13], [13, 10], [11, 12], [8, 13], [5, 12]]); if (r === 11) { Rf(c, '#ffffff', 7, 2, 2, 1); } }
+    });
+    const cv = document.createElement('canvas'); cv.width = cv.height = size; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(s.cv, 0, 0, size, size);
+    badges.set(k, cv); return cv;
+  }
+  Wreck.ranks = RANKS.map(([name, xp]) => ({ name, xp }));
+  Wreck.skins = SKINS.map((s) => ({ id: s.id, name: s.name, rank: s.rank }));
+  Wreck.progress = () => { const r = rankOf(xpTotal); return { xp: xpTotal, rank: r, name: RANKS[r][0], next: RANKS[r + 1] ? { name: RANKS[r + 1][0], xp: RANKS[r + 1][1] } : null, floor: RANKS[r][1] }; };
+  Wreck.badge = badge;
+  Wreck.suit = 'standard';
+
   // ------------------------------------------------------------------ health and PvP (online only)
   const MAX_HP = 100, RESPAWN = 3, SHIELD = 1.5;
   const DMG = { pistol: 22, smg: 9, shotgun: 11, drone: 5 };
@@ -1309,7 +1391,7 @@
   }
   // the suit comes apart: plates fly off as debris
   function burstSuit(P, plate) {
-    const parts = suit(/^#[0-9a-f]{6}$/i.test(plate) ? plate : '#5b6bd6');
+    const parts = suit(/^#[0-9a-f]{6}$/i.test(plate) ? plate : '#5b6bd6', P === S.p ? Wreck.suit : P.suit);
     for (const k of ['head', 'torso', 'upper', 'upper', 'fore', 'fore', 'thigh', 'thigh', 'shin', 'shin', 'pack']) {
       const p = parts[k]; S.bodies.push({ k: 's', sprite: p.cv, frag: true, hits: 0, x: P.x + rnd(-8, 8), y: P.y - rnd(10, 50), hw: p.cv.width / 2, hh: p.cv.height / 2, vx: rnd(-320, 320) + P.vx * 0.5, vy: rnd(-520, -180), a: rnd(-1, 1), va: rnd(-14, 14), rest: 0 });
     }
@@ -1323,7 +1405,7 @@
   }
   const nameOf = (id) => (id === 'lava' ? 'Lava' : id === me() ? 'You' : S.remotes.get(id)?.name || (roster.find((r) => r.id === id)?.name) || 'Someone');
   function feed(by, victim, w) {
-    if (by === me() && victim !== me()) S.kills = (S.kills || 0) + 1;
+    if (by === me() && victim !== me()) { S.kills = (S.kills || 0) + 1; S.cur = null; gainXP(100); }
     const line = by && by !== victim ? `${nameOf(by)} ✕ ${nameOf(victim)}  ·  ${WNAME[w] || ''}` : `${nameOf(victim)} self-destructed`;
     const el = document.createElement('div'); el.className = 'pn kf'; el.textContent = line; S.hud.$('.feed').prepend(el);
     setTimeout(() => el.remove(), 5000); while (S.hud.$('.feed').children.length > 5) S.hud.$('.feed').lastChild.remove();
@@ -1339,7 +1421,7 @@
   const KINDS = new Set(['b', 'r', 'n', 'm', 'd', 'h', 'w']);
   const ser = (s) => ({ k: s.k, x: r1(s.x), y: r1(s.y), vx: r1(s.vx), vy: r1(s.vy), dmg: s.dmg, pierce: s.pierce, carve: s.carve, fuse: s.fuse, life: s.life, r: s.r, w: s.w, range: s.range != null ? Math.round(s.range) : undefined });
   const SKIN_RE = /^#[0-9a-f]{6}$/i;
-  function remotePlayer(r) { const sp = spawnAt(); const p = makePlayer(sp[0], sp[1]); p.id = r.id; p.name = String(r.name || 'Player').slice(0, 16); p.skin = SKIN_RE.test(r.skin) ? r.skin : '#4f8cff'; p.tx = p.x; p.ty = p.y; p.tokens = 40; p.hp = MAX_HP; p.alive = true; return p; }
+  function remotePlayer(r) { const sp = spawnAt(); const p = makePlayer(sp[0], sp[1]); p.id = r.id; p.name = String(r.name || 'Player').slice(0, 16); p.suit = skinOf(r.suit).id; p.rank = Number.isInteger(r.rank) ? clamp(r.rank, 0, RANKS.length - 1) : 0; p.skin = SKIN_RE.test(r.skin) ? r.skin : '#4f8cff'; p.tx = p.x; p.ty = p.y; p.tokens = 40; p.hp = MAX_HP; p.alive = true; return p; }
   function stepRemotes(dt) {
     for (const R of S.remotes.values()) {
       R.tx += R.vx * dt; R.ty += R.vy * dt;                     // dead-reckon between updates, then ease toward it
@@ -1452,7 +1534,7 @@
   }
   function stop() {
     if (!S) return;
-    cancelAnimationFrame(S.raf); flameSound(false);
+    cancelAnimationFrame(S.raf); flameSound(false); saveXP();
     for (const [t, ev, fn, o] of S.on) t.removeEventListener(ev, fn, o);
     S.cv.remove(); S.hud.host.remove();
     document.documentElement.style.overflow = S.prevOverflow;

@@ -12,6 +12,8 @@
   const players = new Map();          // id -> { id, name, skin }
   let ui = { status() {}, lobby() {}, start() {}, left() {} };
 
+  const SUITS = new Set(['standard', 'ronin', 'diver', 'robot', 'astro', 'sentinel', 'phantom', 'juggernaut', 'golden']);
+  const look = (p) => ({ suit: SUITS.has(p.suit) ? p.suit : 'standard', rank: Number.isInteger(p.rank) && p.rank >= 0 && p.rank < 12 ? p.rank : 0 });
   const cleanName = (s) => String(s || '').replace(/[^\p{L}\p{N} _.-]/gu, '').trim().slice(0, 16) || 'Player';
   const code = () => Array.from({ length: 6 }, () => ALPHA[(Math.random() * ALPHA.length) | 0]).join('');
   const list = () => [...players.values()];
@@ -30,7 +32,7 @@
   async function host(c, self) {
     peer = await newPeer(PREFIX + c);
     isHost = true; room = c; started = false;
-    players.clear(); players.set(peer.id, { id: peer.id, ...self });
+    players.clear(); players.set(peer.id, { id: peer.id, ...self, ...look(self) });
     peer.on('connection', (conn) => {
       conn.on('open', () => {
         if (conns.size >= MAX - 1) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 300); return; }
@@ -50,7 +52,7 @@
     // drop floods: at most 90 messages a second from one player
     const now = performance.now(), r = rate.get(id) || { t: now, n: 0 }; if (now - r.t > 1000) { r.t = now; r.n = 0; } if (++r.n > 90) return; rate.set(id, r);
     if (m.t === 'hi') {
-      players.set(id, { id, name: cleanName(m.name), skin: SKIN_RE.test(m.skin) ? m.skin : '#4f8cff' });
+      players.set(id, { id, name: cleanName(m.name), skin: SKIN_RE.test(m.skin) ? m.skin : '#4f8cff', ...look(m) });
       conns.get(id)?.send({ t: 'welcome', level: level(), started, you: id });
       rosterOut(); return;
     }
@@ -79,7 +81,7 @@
           attach(); resolve(c); if (m.started) ui.start();
         } else if (m.t === 'roster' && Array.isArray(m.players)) {
           players.clear();
-          for (const p of m.players.slice(0, MAX)) if (p && typeof p.id === 'string') players.set(p.id, { id: p.id.slice(0, 64), name: cleanName(p.name), skin: SKIN_RE.test(p.skin) ? p.skin : '#4f8cff' });
+          for (const p of m.players.slice(0, MAX)) if (p && typeof p.id === 'string') players.set(p.id, { id: p.id.slice(0, 64), name: cleanName(p.name), skin: SKIN_RE.test(p.skin) ? p.skin : '#4f8cff', ...look(p) });
           Wreck.roster(list(), peer.id); ui.lobby(list(), { room, isHost });
         } else if (m.t === 'go') ui.start();
         else if (m.t === 'rb') Wreck.remote(null, { t: 'rb' });

@@ -88,6 +88,17 @@
   .panel { font-family: Silkscreen, ui-monospace, Menlo, monospace; color: #e9eaf5; background: linear-gradient(#232540, #17182b); border: 3px solid #07080f; border-radius: 4px; box-shadow: inset 3px 3px 0 #4a4e78, inset -3px -3px 0 #0e0f1c, 0 8px 0 rgba(0,0,0,.5); max-height: calc(100vh - 32px); overflow-y: auto; }
   .panel h2 { font-family: Silkscreen, monospace; font-weight: 400; font-size: 30px; color: #ffe066; text-shadow: 3px 3px 0 #b23a4e, 6px 6px 0 #07080f; letter-spacing: 0; }
   .panel p { color: #a4a8c8; font-size: 12px; line-height: 1.7; }
+  .rank { display: flex; gap: 12px; align-items: center; background: #0e0f1c; border: 2px solid #07080f; border-radius: 3px; padding: 10px; }
+  .rank canvas { width: 40px; height: 40px; image-rendering: pixelated; flex: none; }
+  .rk { flex: 1; } .rk b { font-weight: 400; color: #ffe066; font-size: 15px; } .rk small { display: block; color: #a4a8c8; font-size: 10px; margin-top: 4px; }
+  .xpbar { height: 8px; background: #07080f; margin-top: 6px; } .xpbar i { display: block; height: 100%; width: 0; background: repeating-linear-gradient(90deg, #ffe066 0 5px, #ffb020 5px 7px); }
+  .suits { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; }
+  .suits button { position: relative; padding: 0; border: 2px solid #07080f; border-radius: 3px; background: #141526; cursor: pointer; aspect-ratio: 3 / 4; }
+  .suits button canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  .suits button span { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px; font: 8px Silkscreen, monospace; color: #e9eaf5; background: rgba(7,8,15,.75); }
+  .suits button.locked canvas { filter: brightness(.25) grayscale(1); } .suits button.locked { cursor: not-allowed; }
+  .suits button.locked em { position: absolute; inset: 30% 0 auto; font: 8px Silkscreen, monospace; font-style: normal; color: #ffe066; text-align: center; }
+  .suits button[aria-pressed="true"] { outline: 3px solid #ffe066; outline-offset: 1px; }
   .maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
   .maps button { position: relative; padding: 0; border: 2px solid #07080f; border-radius: 3px; background: #0e0f1c; cursor: pointer; overflow: hidden; aspect-ratio: 16 / 10; }
   .maps button canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
@@ -146,6 +157,10 @@
     <button class="play" id="play">Play solo</button>
     <div class="lbl">MAP</div>
     <div class="maps" id="maps"></div>
+    <div class="lbl">RANK</div>
+    <div class="rank"><canvas id="badge" width="40" height="40"></canvas><div class="rk"><b id="rname">Recruit</b><div class="xpbar"><i id="xpfill"></i></div><small id="rnext"></small></div></div>
+    <div class="lbl">SUIT</div>
+    <div class="suits" id="suits"></div>
     <div class="lbl">SUIT COLOUR</div>
     <div class="skins" id="skins"></div>
     <div class="lbl">PLAY ONLINE · UP TO 8 PLAYERS</div>
@@ -197,11 +212,26 @@
   let skin = SKINS[0]; try { const k = localStorage.getItem('wreck-suit'); if (SKINS.includes(k)) skin = k; } catch {}
   SKINS.forEach((c) => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', 'Scarf colour'); b.setAttribute('aria-pressed', c === skin); b.onclick = () => { skin = c; try { localStorage.setItem('wreck-suit', c); } catch {} [...$('skins').children].forEach((x) => x.setAttribute('aria-pressed', x === b)); }; $('skins').appendChild(b); });
 
+  // rank card and suits: suits unlock as you rank up
+  function renderRank() {
+    const pr = Wreck.progress(); $('rname').textContent = pr.name;
+    const bc = $('badge').getContext('2d'); bc.imageSmoothingEnabled = false; bc.clearRect(0, 0, 40, 40); bc.drawImage(Wreck.badge(pr.rank, 40), 0, 0);
+    $('xpfill').style.width = pr.next ? ((pr.xp - pr.floor) / (pr.next.xp - pr.floor) * 100).toFixed(1) + '%' : '100%';
+    $('rnext').textContent = pr.next ? `${pr.xp.toLocaleString()} XP · ${pr.next.name} at ${pr.next.xp.toLocaleString()}` : `${pr.xp.toLocaleString()} XP · top rank`;
+    [...$('suits').children].forEach((b) => { const s = Wreck.skins.find((x) => x.id === b.dataset.id), lock = s.rank > pr.rank; b.classList.toggle('locked', lock); b.querySelector('em').textContent = lock ? Wreck.ranks[s.rank].name : ''; b.title = lock ? `${s.name}: unlocks at ${Wreck.ranks[s.rank].name}` : s.name; });
+    if (Wreck.skins.find((x) => x.id === Wreck.suit).rank > pr.rank) setSuit('standard');
+  }
+  function setSuit(id) { Wreck.suit = id; try { localStorage.setItem('wreck-suit-id', id); } catch {} [...$('suits').children].forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === id)); }
+  Wreck.skins.forEach((s) => { const b = document.createElement('button'); b.dataset.id = s.id; const cv = document.createElement('canvas'); cv.width = 60; cv.height = 80; const sp = document.createElement('span'); sp.textContent = s.name; b.append(cv, document.createElement('em'), sp); b.onclick = () => { if (!b.classList.contains('locked')) setSuit(s.id); }; $('suits').append(b); });
+  let savedSuit = 'standard'; try { savedSuit = localStorage.getItem('wreck-suit-id') || 'standard'; } catch {}
+  setSuit(Wreck.skins.some((x) => x.id === savedSuit) ? savedSuit : 'standard'); renderRank();
+  Wreck.onRank = () => renderRank();
   // the suit on the start screen follows the cursor and shows the chosen colour
   let mouse = [innerWidth, innerHeight / 2];
   addEventListener('pointermove', (e) => (mouse = [e.clientX, e.clientY]));
   const sc = $('suit');
-  const spin = (t) => { if (!$('start').classList.contains('hidden')) { const r = sc.getBoundingClientRect(); Wreck.preview(sc, skin, t / 1000, Math.atan2(mouse[1] - (r.top + r.height * 0.6), mouse[0] - (r.left + r.width / 2)), 1); } requestAnimationFrame(spin); };
+  let spinN = 0;
+  const spin = (t) => { if (!$('start').classList.contains('hidden')) { const r = sc.getBoundingClientRect(); Wreck.preview(sc, skin, t / 1000, Math.atan2(mouse[1] - (r.top + r.height * 0.6), mouse[0] - (r.left + r.width / 2)), 1, Wreck.suit); if (!(spinN++ % 20)) [...$('suits').children].forEach((b) => Wreck.preview(b.firstChild, skin, 0, -0.1, 1, b.dataset.id)); } requestAnimationFrame(spin); };
   requestAnimationFrame(spin);
   // maps: your profile (this page) or one of the built-in levels
   let mapId = (params.get('map') || '').replace(/[^a-z]/g, ''); if (!Wreck.maps.some((m) => m.id === mapId)) mapId = '';
@@ -219,12 +249,12 @@
   const pin = (on) => { document.documentElement.style.width = on ? '1280px' : ''; document.body.style.width = on ? '1280px' : ''; };
   const startGame = () => { $('start').classList.add('hidden'); Wreck.skin = skin; pin(WreckNet.inRoom); requestAnimationFrame(() => Wreck.start()); };
   $('play').addEventListener('click', startGame);
-  Wreck.onExit = () => { pin(false); $('start').classList.remove('hidden'); };
+  Wreck.onExit = () => { pin(false); renderRank(); $('start').classList.remove('hidden'); };
 
   // online
   let name = ''; try { name = localStorage.getItem('wreck-name') || ''; } catch {}
   $('pname').value = name || 'Stickman' + ((Math.random() * 900 + 100) | 0);
-  const self = () => { const n = $('pname').value.trim() || 'Stickman'; try { localStorage.setItem('wreck-name', n); } catch {} return { name: n, skin }; };
+  const self = () => { const n = $('pname').value.trim() || 'Stickman'; try { localStorage.setItem('wreck-name', n); } catch {} return { name: n, skin, suit: Wreck.suit, rank: Wreck.progress().rank }; };
   const busy = (b, text) => { ['quick', 'create'].forEach((id) => ($(id).disabled = b)); $('status').style.color = b ? '#6b7088' : '#c2334a'; $('status').textContent = text || ''; };
   const why = (e) => ({ full: 'This room is full.', 'peer-unavailable': 'No room with that code.', busy: 'Every quick-match room is full. Try again in a moment.', timeout: 'Could not reach the matchmaking service. Try again.' }[e?.message] || { 'peer-unavailable': 'No room with that code.', network: 'Network problem. Check your connection.', 'browser-incompatible': 'This browser cannot play online.' }[e?.type] || 'Could not connect. Try again.');
   const showLobby = (on) => { $('solo').hidden = on; $('lobby').hidden = !on; };

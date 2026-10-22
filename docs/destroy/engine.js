@@ -301,7 +301,7 @@
     sfx('crash', 0.7);
   }
   function knock(g, vx, vy, burnt, spin) {
-    if (g.dead) return; g.dead = true; S.stats.letters++; gainXP(1); S.extra += (g.w * g.h) / (MC * MC) * 0.6;
+    if (g.dead) return; g.dead = true; S.stats.letters++; gainXP(1); if (!S.cur || S.cur === me()) dailyBump('letters', 1, { w: S.curW }); S.extra += (g.w * g.h) / (MC * MC) * 0.6;
     onTiles(g.y, g.y + g.h, (c) => { c.globalCompositeOperation = 'source-atop'; c.fillStyle = g.under; c.fillRect(g.x - 0.5, g.y, g.w + 1, g.h); });
     if (S.bodies.length >= MAX_BODIES) settleOldest();
     S.bodies.push({ k: 'g', ch: g.ch, font: g.font, color: burnt ? '#3b2a2a' : g.color, x: g.x + g.w / 2, y: g.y + g.h / 2, hw: g.w / 2, hh: g.h / 2 * 0.62, by: baseline(S.L.tiles[0].ctx, g) - (g.y + g.h / 2), vx, vy, a: 0, va: spin ?? rnd(-12, 12), rest: 0 });
@@ -309,7 +309,7 @@
   }
   function detach(b, hx, hy, force) {
     if (b.dead || b.w > S.L.vw * 0.9 || b.w * b.h > 60000) return;
-    b.dead = true; S.stats.elements++; gainXP(6); S.extra += (b.w * b.h) / (MC * MC) * 0.5;
+    b.dead = true; S.stats.elements++; gainXP(6); if (!S.cur || S.cur === me()) { S.myEl = (S.myEl || 0) + 1; dailyBump('elements', S.myEl, { best: true }); } S.extra += (b.w * b.h) / (MC * MC) * 0.5;
     const sprite = grab(b.x, b.y, b.w, b.h);
     // everything drawn inside it leaves with it
     q(S.L.gh, b.x, b.y, b.w, b.h, (g) => { if (g.x >= b.x - 1 && g.x + g.w <= b.x + b.w + 1 && g.y >= b.y - 1 && g.y + g.h <= b.y + b.h + 1) g.dead = true; });
@@ -599,7 +599,7 @@
   }
   function flames(P, m) { const w = W[5]; for (let i = 0; i < w.pellets && S.fx.length < MAX_FX; i++) { const a = m.a + rnd(-w.spread, w.spread), v = w.speed * rnd(0.7, 1.15); S.fx.push({ k: 'flame', owner: P === S.p ? me() : P.id, x: m.x, y: m.y, vx: Math.cos(a) * v + P.vx * 0.4, vy: Math.sin(a) * v + P.vy * 0.2, s: pick([2, 3, 3, 4]), life: rnd(0.35, 0.6), t: 0 }); } }
   function addDrone(P, x, y, a) { S.drones.push({ owner: P, x, y, vx: Math.cos(a) * 300, vy: -200, life: 14, cd: 0.5, ph: rnd(0, 6), slot: S.drones.filter((d) => d.owner === P).length % 3 }); }
-  function rail(m, owner) {
+  function rail(m, owner) { S.cur = owner || null; S.curW = 'rail';
     const dx = Math.cos(m.a), dy = Math.sin(m.a), L = S.L;
     let len = 0; while (len < 3000) { const x = m.x + dx * len, y = m.y + dy * len; if (x < -10 || x > L.vw + 10 || y < -50 || y > L.WH) break; len += 6; }
     const x1 = m.x + dx * len, y1 = m.y + dy * len;
@@ -631,7 +631,7 @@
   function stepShots(dt) {
     const L = S.L;
     for (let i = S.shots.length - 1; i >= 0; i--) {
-      const s = S.shots[i]; s.life -= dt; let gone = s.life <= 0; S.cur = s.owner || null;
+      const s = S.shots[i]; s.life -= dt; let gone = s.life <= 0; S.cur = s.owner || null; S.curW = s.w || { r: 'rocket', n: 'grenade', m: 'doom', d: 'doom', h: 'hole', w: 'wand' }[s.k];
       if (s.k === 'b') {
         const steps = Math.max(1, Math.ceil(Math.hypot(s.vx, s.vy) * dt / 4));
         for (let k = 0; k < steps && !gone; k++) {
@@ -785,7 +785,7 @@
         if (!f.stuck) { f.vy += G * 0.8 * dt; if (solid(f.x + f.vx * dt, f.y + f.vy * dt)) { f.stuck = true; f.vx = f.vy = 0; } }
         else { if (Math.random() < dt * 1.2) carve(f.x, f.y + 1, 2.5, { bits: 0, knock: false, detach: false, burn: true }); if (Math.random() < dt * 4 && S.fx.length < MAX_FX) S.fx.push({ k: 'fire', x: f.x + rnd(-2, 2), y: f.y - 2, vx: 0, vy: -40, s: pick([1, 2]), life: 0.3, t: 0 }); if (!solid(f.x, f.y + 2)) f.stuck = false; }
       } else if (k === 'flame') {
-        S.cur = f.owner || null;
+        S.cur = f.owner || null; S.curW = 'flame';
         if (f.owner !== me() && S.p.alive && Math.abs(f.x - S.p.x) < 9 && f.y < S.p.y && f.y > S.p.y - 56) hurt(72 * dt, f.owner, 'flame');
         f.vx *= 1 - dt * 2; f.vy = f.vy * (1 - dt * 2) - 220 * dt;
         const g = glyphAt(f.x, f.y);
@@ -1259,7 +1259,8 @@
     }
     if (S.time > 12 || S.stats.shots > 30) S.hud.help.style.opacity = '0';
     for (const [m, xp] of [[0.25, 40], [0.5, 80]]) if (p >= m && !(S.miles || (S.miles = {}))[m]) { S.miles[m] = 1; S.cur = null; gainXP(xp); }
-    if (!S.done && p >= 0.7) { S.done = true; S.cur = null; gainXP(250); overlay('done'); }
+    if ((S.frame & 31) === 0 && S.L.map) dailyBump('map', Math.floor(p * 100), { map: S.L.map, best: true });
+    if (!S.done && p >= 0.7) { S.done = true; S.cur = null; gainXP(250); if (!S.L.map) dailyBump('wreck', 1); overlay('done'); }
     if (S.xpT > 0 && (S.xpT -= dt) <= 0) { S.xpBuf = 0; S.hud.xp.style.opacity = '0'; } else if (S.xpBuf) { S.hud.xp.textContent = `+${S.xpBuf} XP`; S.hud.xp.style.opacity = '1'; }
   }
   function overlay(kind) {
@@ -1366,6 +1367,46 @@
   Wreck.badge = badge;
   Wreck.suit = 'standard';
 
+  // ------------------------------------------------------------------ daily challenges: the same three for everyone, from the UTC date
+  const DAILY_KEY = 'wreck-daily', DWN = { pistol: 'Pistol', smg: 'SMG', shotgun: 'Shotgun', rocket: 'Rocket', rail: 'Railgun', flame: 'Flamethrower' };
+  const dayKey = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
+  function dailySet(day) {
+    const r = rng32(hashStr('daily:' + day)), pk = (a) => a[(r() * a.length) | 0], wpn = () => pk(Object.keys(DWN)), mapIds = Object.keys(MAPS);
+    const online = [() => { const w = pk(['pistol', 'smg', 'shotgun', 'rocket', 'rail']); return { kind: 'wkill', w, n: 3 + ((r() * 3) | 0), text: (n) => `Get ${n} kills with the ${DWN[w]}` }; },
+      () => ({ kind: 'mkill', n: 3 + ((r() * 3) | 0), text: (n) => `Get ${n} kills in one match` }),
+      () => ({ kind: 'matches', n: 2 + ((r() * 2) | 0), text: (n) => `Finish ${n} online matches` })];
+    const solo = [() => { const w = wpn(); return { kind: 'letters', w, n: 150 + ((r() * 6) | 0) * 50, text: (n) => `Knock off ${n} letters with the ${DWN[w]}` }; },
+      () => ({ kind: 'wreck', n: 1 + ((r() * 2) | 0), text: (n) => `Destroy ${n} website${n > 1 ? 's' : ''} (70%)` }),
+      () => { const m = pk(mapIds); return { kind: 'map', map: m, n: 40 + ((r() * 3) | 0) * 10, text: (n) => `Destroy ${n}% of ${MAPS[m].name} in one game` }; },
+      () => ({ kind: 'elements', n: 20 + ((r() * 4) | 0) * 10, text: (n) => `Break ${n} elements in one game` })];
+    const a = pk(solo)(); let b = pk(solo)(); for (let i = 0; i < 6 && b.kind === a.kind; i++) b = pk(solo)();
+    return [{ ...a, xp: 150 }, { ...b, xp: 300 }, { ...pk(online)(), xp: 500 }].map((c, i) => ({ ...c, i, label: c.text(c.n) }));
+  }
+  function dailyState() {
+    const day = dayKey(); let st = null; try { st = JSON.parse(localStorage.getItem(DAILY_KEY)); } catch {}
+    if (!st || st.day !== day) st = { day, prog: [0, 0, 0], done: [false, false, false] };
+    return st;
+  }
+  // per-game progress (best in one game) or running totals for the day
+  function dailyBump(kind, amount = 1, opt = {}) {
+    if (!S) return; const st = dailyState(), set = dailySet(st.day); let changed = false;
+    set.forEach((c, i) => {
+      if (st.done[i] || c.kind !== kind) return;
+      if ((kind === 'letters' || kind === 'wkill') && c.w !== opt.w) return;
+      if (kind === 'map' && c.map !== opt.map) return;
+      const v = opt.best ? Math.max(st.prog[i], amount) : st.prog[i] + amount;
+      if (v !== st.prog[i]) { st.prog[i] = Math.min(c.n, v); changed = true; }
+      if (st.prog[i] >= c.n) { st.done[i] = true; dailyDone(c); }
+    });
+    if (changed) { try { localStorage.setItem(DAILY_KEY, JSON.stringify(st)); } catch {} Wreck.onDaily?.(); }
+  }
+  function dailyDone(c) {
+    const cur = S.cur; S.cur = null; gainXP(c.xp); S.cur = cur; sfx('rank');
+    const d = document.createElement('div'); d.className = 'promo pn'; d.innerHTML = `<div><small>Daily challenge complete</small><b>+${c.xp} XP</b><small></small></div>`; d.querySelectorAll('small')[1].textContent = c.label;
+    S.hud.root.appendChild(d); setTimeout(() => d.remove(), 3200);
+  }
+  Wreck.daily = () => { const st = dailyState(), set = dailySet(st.day), ends = Date.parse(st.day + 'T00:00:00Z') + 86400000; return { ends, list: set.map((c, i) => ({ text: c.label, n: c.n, progress: st.prog[i], xp: c.xp, done: st.done[i], online: ['wkill', 'mkill', 'matches'].includes(c.kind) })) }; };
+
   // ------------------------------------------------------------------ health and PvP (online only)
   const MAX_HP = 100, RESPAWN = 3, SHIELD = 1.5;
   const DMG = { pistol: 22, smg: 9, shotgun: 11, drone: 5 };
@@ -1405,7 +1446,7 @@
   }
   const nameOf = (id) => (id === 'lava' ? 'Lava' : id === me() ? 'You' : S.remotes.get(id)?.name || (roster.find((r) => r.id === id)?.name) || 'Someone');
   function feed(by, victim, w) {
-    if (by === me() && victim !== me()) { S.kills = (S.kills || 0) + 1; S.cur = null; gainXP(100); }
+    if (by === me() && victim !== me()) { S.kills = (S.kills || 0) + 1; S.cur = null; gainXP(100); dailyBump('wkill', 1, { w: w === 'rail' ? 'rail' : w }); dailyBump('mkill', S.kills, { best: true }); }
     const line = by && by !== victim ? `${nameOf(by)} ✕ ${nameOf(victim)}  ·  ${WNAME[w] || ''}` : `${nameOf(victim)} self-destructed`;
     const el = document.createElement('div'); el.className = 'pn kf'; el.textContent = line; S.hud.$('.feed').prepend(el);
     setTimeout(() => el.remove(), 5000); while (S.hud.$('.feed').children.length > 5) S.hud.$('.feed').lastChild.remove();
@@ -1485,12 +1526,13 @@
     S.removed = 0; S.extra = 0; S.sand = 0;
     S.bodies = []; S.shots = []; S.fx = []; S.beams = []; S.drones = []; S.done = false; S.time = 0;
     S.remotes = new Map(); for (const r of roster) if (r.id !== Wreck.selfId) S.remotes.set(r.id, remotePlayer(r));
-    S.stats = { letters: 0, elements: 0, explosions: 0, shots: 0, eaten: 0 };
+    S.stats = { letters: 0, elements: 0, explosions: 0, shots: 0, eaten: 0 }; S.myEl = 0; S.kills = 0; S.miles = {};
     S.cam = 0; const w = S.p ? S.p.weapon : 0;
     const sp = spawnAt(); S.p = makePlayer(sp[0], sp[1]); S.p.weapon = w;
   }
   function rebuild(fromNet) {
     if (!S) return;
+    if (Wreck.net && S.time > 60 && (fromNet === true || Wreck.net.isHost)) dailyBump('matches', 1);
     if (Wreck.net && !Wreck.net.isHost && fromNet !== true) return toast('Only the host can rebuild');
     if (Wreck.net?.isHost && fromNet !== true) net({ t: 'rb' });
     S.hud.root.querySelector('.ov')?.remove(); S.paused = false; build();
@@ -1534,6 +1576,7 @@
   }
   function stop() {
     if (!S) return;
+    if (Wreck.net && S.time > 60) dailyBump('matches', 1);   // an online match counts once you have played a minute
     cancelAnimationFrame(S.raf); flameSound(false); saveXP();
     for (const [t, ev, fn, o] of S.on) t.removeEventListener(ev, fn, o);
     S.cv.remove(); S.hud.host.remove();

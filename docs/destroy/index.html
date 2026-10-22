@@ -99,6 +99,12 @@
   .suits button.locked canvas { filter: brightness(.25) grayscale(1); } .suits button.locked { cursor: not-allowed; }
   .suits button.locked em { position: absolute; inset: 30% 0 auto; font: 8px Silkscreen, monospace; font-style: normal; color: #ffe066; text-align: center; }
   .suits button[aria-pressed="true"] { outline: 3px solid #ffe066; outline-offset: 1px; }
+  .dl span { float: right; color: #a4a8c8; }
+  .daily { display: grid; gap: 6px; }
+  .drow { background: #0e0f1c; border: 2px solid #07080f; border-radius: 3px; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-size: 11px; }
+  .drow p { margin: 0; color: #e9eaf5; } .drow b { font-weight: 400; color: #ffe066; font-size: 11px; }
+  .drow .xpbar { grid-column: 1 / -1; margin-top: 2px; } .drow small { color: #a4a8c8; font-size: 9px; }
+  .drow.done { opacity: .6; } .drow.done p::before { content: '✓ '; color: #2fd08a; }
   .maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
   .maps button { position: relative; padding: 0; border: 2px solid #07080f; border-radius: 3px; background: #0e0f1c; cursor: pointer; overflow: hidden; aspect-ratio: 16 / 10; }
   .maps button canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
@@ -159,6 +165,8 @@
     <div class="maps" id="maps"></div>
     <div class="lbl">RANK</div>
     <div class="rank"><canvas id="badge" width="40" height="40"></canvas><div class="rk"><b id="rname">Recruit</b><div class="xpbar"><i id="xpfill"></i></div><small id="rnext"></small></div></div>
+    <div class="lbl dl">DAILY CHALLENGES <span id="dends"></span></div>
+    <div class="daily" id="daily"></div>
     <div class="lbl">SUIT</div>
     <div class="suits" id="suits"></div>
     <div class="lbl">SUIT COLOUR</div>
@@ -226,6 +234,14 @@
   let savedSuit = 'standard'; try { savedSuit = localStorage.getItem('wreck-suit-id') || 'standard'; } catch {}
   setSuit(Wreck.skins.some((x) => x.id === savedSuit) ? savedSuit : 'standard'); renderRank();
   Wreck.onRank = () => renderRank();
+  function renderDaily() {
+    const d = Wreck.daily(), mins = Math.max(1, Math.ceil((d.ends - Date.now()) / 60000));
+    $('dends').textContent = `New in ${Math.floor(mins / 60)}h ${mins % 60}m`;
+    $('daily').innerHTML = '';
+    d.list.forEach((c) => { const row = document.createElement('div'); row.className = 'drow' + (c.done ? ' done' : ''); const p = document.createElement('p'); p.textContent = c.text; const b = document.createElement('b'); b.textContent = `+${c.xp} XP`; const bar = document.createElement('div'); bar.className = 'xpbar'; const i = document.createElement('i'); i.style.width = (c.progress / c.n * 100).toFixed(1) + '%'; bar.append(i); const sm = document.createElement('small'); sm.textContent = `${Math.min(c.progress, c.n)} / ${c.n}${c.online ? ' · online' : ''}`; row.append(p, b, bar, sm); $('daily').append(row); });
+  }
+  renderDaily(); setInterval(renderDaily, 30000);
+  Wreck.onDaily = () => renderDaily();
   // the suit on the start screen follows the cursor and shows the chosen colour
   let mouse = [innerWidth, innerHeight / 2];
   addEventListener('pointermove', (e) => (mouse = [e.clientX, e.clientY]));
@@ -249,7 +265,7 @@
   const pin = (on) => { document.documentElement.style.width = on ? '1280px' : ''; document.body.style.width = on ? '1280px' : ''; };
   const startGame = () => { $('start').classList.add('hidden'); Wreck.skin = skin; pin(WreckNet.inRoom); requestAnimationFrame(() => Wreck.start()); };
   $('play').addEventListener('click', startGame);
-  Wreck.onExit = () => { pin(false); renderRank(); $('start').classList.remove('hidden'); };
+  Wreck.onExit = () => { pin(false); renderRank(); renderDaily(); $('start').classList.remove('hidden'); };
 
   // online
   let name = ''; try { name = localStorage.getItem('wreck-name') || ''; } catch {}

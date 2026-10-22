@@ -83,7 +83,28 @@
   .back { display: block; text-align: center; margin-top: 14px; color: #6b7088; font-size: 13px; }
   @media (pointer: coarse) { .keys, .bm, .bm-l { display: none; } .phone { display: block !important; } }
   @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; } .side { display: grid; grid-template-columns: 88px 1fr; gap: 0 16px; } .side img.av { grid-row: span 3; } .side h1 { margin-top: 0; } .repos { grid-template-columns: 1fr; } header.gh nav { display: none; } }
+  /* pixel theme for the start screen, matching the game */
+  .start { background: radial-gradient(80% 60% at 50% 30%, rgba(59,36,102,.55), rgba(10,8,30,.82)); }
+  .panel { font-family: Silkscreen, ui-monospace, Menlo, monospace; color: #e9eaf5; background: linear-gradient(#232540, #17182b); border: 3px solid #07080f; border-radius: 4px; box-shadow: inset 3px 3px 0 #4a4e78, inset -3px -3px 0 #0e0f1c, 0 8px 0 rgba(0,0,0,.5); max-height: calc(100vh - 32px); overflow-y: auto; }
+  .panel h2 { font-family: Silkscreen, monospace; font-weight: 400; font-size: 30px; color: #ffe066; text-shadow: 3px 3px 0 #b23a4e, 6px 6px 0 #07080f; letter-spacing: 0; }
+  .panel p { color: #a4a8c8; font-size: 12px; line-height: 1.7; }
+  .hero { display: flex; gap: 14px; align-items: center; }
+  .hero canvas { width: 120px; height: 160px; flex: none; image-rendering: pixelated; background: radial-gradient(60% 50% at 50% 60%, rgba(91,107,214,.35), transparent 70%); }
+  .lbl { color: #ffe066; font-size: 11px; font-weight: 400; }
+  .play, .btn2, form.who button, #pname, form.who input { font-family: Silkscreen, monospace; font-weight: 400; border-radius: 3px; }
+  .play { background: #ff5d73; color: #fff; border: 2px solid #07080f; box-shadow: inset 2px 2px 0 #ff9aa8, inset -2px -3px 0 #b23a4e; font-size: 18px; }
+  .play:hover { background: #ff7083; }
+  .btn2, form.who button { background: #2b2e4e; color: #e9eaf5; border: 2px solid #07080f; box-shadow: inset 2px 2px 0 #4f5486, inset -2px -3px 0 #15162a; }
+  .btn2.hot { background: #2fb383; border-color: #07080f; box-shadow: inset 2px 2px 0 #7ee0b9, inset -2px -3px 0 #1d7a58; }
+  #pname, form.who input { background: #0e0f1c; color: #e9eaf5; border: 2px solid #07080f; box-shadow: inset 2px 2px 0 #05060c, inset -1px -1px 0 #3c3f60; }
+  .skins button { width: 30px; height: 30px; border-radius: 2px; border: 2px solid #07080f; box-shadow: inset 2px 2px 0 rgba(255,255,255,.35), inset -2px -2px 0 rgba(0,0,0,.35); }
+  .skins button[aria-pressed="true"] { outline: 3px solid #ffe066; outline-offset: 1px; }
+  .bm { background: #0e0f1c; color: #a4a8c8; border-radius: 3px; } .bm a { border-radius: 3px; font-family: Silkscreen, monospace; font-weight: 400; }
+  .keys { color: #a4a8c8; font-size: 10px; } .keys b { background: #07080f; color: #ffe066; font-weight: 400; }
+  .plist li { background: #0e0f1c; border-radius: 3px; font-weight: 400; } .plist em { color: #a4a8c8; }
+  .roomcode b { color: #ffe066; } .status { color: #ff8a9a; } .wait { color: #a4a8c8; } .back { color: #a4a8c8; }
 </style>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet" />
 </head>
 <body>
 <header class="gh">
@@ -113,11 +134,12 @@
 
 <div class="start" id="start">
   <div class="panel">
+    <div class="hero"><canvas id="suit" width="120" height="160"></canvas><div>
     <h2 id="title">Wreck this profile</h2>
-    <p>The page is the ground. Dig through it, knock its letters off and blow its boxes loose with ten weapons.</p>
+    <p>Suit up. The page is the ground: dig through it, knock its letters off and blow its boxes loose with ten weapons.</p></div></div>
     <div id="solo">
     <button class="play" id="play">Play solo</button>
-    <div class="lbl">COLOUR</div>
+    <div class="lbl">SUIT COLOUR</div>
     <div class="skins" id="skins"></div>
     <div class="lbl">PLAY ONLINE · UP TO 8 PLAYERS</div>
     <div class="online">
@@ -164,10 +186,16 @@
   $('bm').addEventListener('click', (e) => { e.preventDefault(); alert('Drag the button to your bookmarks bar, then click it on any website.'); });
 
   // scarf colours
-  const SKINS = ['#ff5d73', '#4f5bff', '#18b37e', '#ffb020', '#8b5cf6', '#15172a'];
-  let skin = SKINS[0]; try { skin = localStorage.getItem('wreck-skin') || skin; } catch {}
-  SKINS.forEach((c) => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', 'Scarf colour'); b.setAttribute('aria-pressed', c === skin); b.onclick = () => { skin = c; try { localStorage.setItem('wreck-skin', c); } catch {} [...$('skins').children].forEach((x) => x.setAttribute('aria-pressed', x === b)); }; $('skins').appendChild(b); });
+  const SKINS = ['#5b6bd6', '#2fb383', '#8b5cf6', '#ff8a3d', '#d8dcef', '#3b4054'];
+  let skin = SKINS[0]; try { const k = localStorage.getItem('wreck-suit'); if (SKINS.includes(k)) skin = k; } catch {}
+  SKINS.forEach((c) => { const b = document.createElement('button'); b.style.background = c; b.setAttribute('aria-label', 'Scarf colour'); b.setAttribute('aria-pressed', c === skin); b.onclick = () => { skin = c; try { localStorage.setItem('wreck-suit', c); } catch {} [...$('skins').children].forEach((x) => x.setAttribute('aria-pressed', x === b)); }; $('skins').appendChild(b); });
 
+  // the suit on the start screen follows the cursor and shows the chosen colour
+  let mouse = [innerWidth, innerHeight / 2];
+  addEventListener('pointermove', (e) => (mouse = [e.clientX, e.clientY]));
+  const sc = $('suit');
+  const spin = (t) => { if (!$('start').classList.contains('hidden')) { const r = sc.getBoundingClientRect(); Wreck.preview(sc, skin, t / 1000, Math.atan2(mouse[1] - (r.top + r.height * 0.6), mouse[0] - (r.left + r.width / 2)), 1); } requestAnimationFrame(spin); };
+  requestAnimationFrame(spin);
   $('who').addEventListener('submit', (e) => { e.preventDefault(); const u = e.target.u.value.trim(); if (u) location.search = '?user=' + encodeURIComponent(u); });
   // every player lays the page out at the same width online, so everyone gets the same level
   const pin = (on) => { document.documentElement.style.width = on ? '1280px' : ''; document.body.style.width = on ? '1280px' : ''; };

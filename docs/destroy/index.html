@@ -103,6 +103,7 @@
   .suits button.locked canvas { filter: brightness(.25) grayscale(1); } .suits button.locked { cursor: not-allowed; }
   .suits button.locked em { position: absolute; inset: 26% 3px auto; font: 7px/1.4 Silkscreen, monospace; font-style: normal; color: #ffe066; text-align: center; }
   .suits button[aria-pressed="true"] { outline: 3px solid #ffe066; outline-offset: 1px; }
+  .fine { font-size: 9px !important; line-height: 1.6 !important; color: #6b7088 !important; margin: 6px 0 0 !important; }
   .emb code { flex: 1; min-width: 0; font: 10px ui-monospace, Menlo, monospace; color: #9fd8ff; word-break: break-all; }
   .dl span { float: right; color: #a4a8c8; }
   .daily { display: grid; gap: 6px; }
@@ -197,9 +198,17 @@
     </div>
     <div class="lbl">DESTROY ANOTHER GITHUB PROFILE</div>
     <form class="who" id="who"><input name="u" placeholder="GitHub username, e.g. torvalds" autocomplete="off" spellcheck="false" /><button>Load</button></form>
+    <div class="lbl">DESTROY ANY WEBSITE</div>
+    <form class="who" id="sitef"><input name="u" placeholder="Any address, e.g. wikipedia.org" autocomplete="off" spellcheck="false" inputmode="url" /><button>Wreck it</button></form>
+    <div class="status" id="sitest" aria-live="polite"></div>
+    <p class="fine">Pages are fetched and rendered by Jina Reader (r.jina.ai), so the address you type is sent to it. Sites that need a login, or block readers, may come out blank.</p>
+    <div class="lbl">SYNC PROGRESS</div>
+    <div class="row2"><button id="synccopy" class="btn2">Copy my code</button></div>
+    <form class="who" id="syncf"><input name="c" placeholder="Paste a code from another device" autocomplete="off" spellcheck="false" /><button>Load</button></form>
+    <div class="status" id="syncst" aria-live="polite"></div>
     <div class="lbl bm-l">PUT WRECK ON YOUR SITE</div>
     <div class="bm emb"><code id="embcode"></code><button id="embcopy" class="btn2" style="flex:none">Copy</button></div>
-    <div class="lbl bm-l">DESTROY ANY WEBSITE</div>
+    <div class="lbl bm-l">BOOKMARKLET</div>
     <div class="bm"><a id="bm" href="#" title="Drag me to your bookmarks bar">Wreck it</a><span>Drag this to your bookmarks bar, open any site, then click it.</span></div>
     <div class="keys phone" style="display:none">Left thumb moves and jumps (push up), right thumb aims and fires.</div>
     <div class="keys"><b>A</b> <b>D</b> move · <b>W</b> jump, again to flip, hold to fly · <b>S</b> drop · <b>Click</b> fire · <b>Q</b> grenade · <b>1</b>–<b>0</b> weapons (6 twice: Executor) · hold <b>W</b> in the air: jetpack · <b>8</b> drone: WASD, right-click dive · <b>Esc</b> pause</div>
@@ -223,9 +232,78 @@
   $('bm').href = `javascript:(()=>{if(window.Wreck)return Wreck.start();const s=document.createElement('script');s.src='${src}?'+Date.now();document.body.appendChild(s)})()`;
   $('bm').addEventListener('click', (e) => { e.preventDefault(); alert('Drag the button to your bookmarks bar, then click it on any website.'); });
 
+  // ---------------------------------------------------------------- any website: fetched, laid out in a hidden frame, then played
+  let siteUrl = '', frame = null;
+  const steps = (t) => { $('sitest').style.color = '#a4a8c8'; $('sitest').textContent = t; };
+  const normUrl = (u) => { u = String(u || '').trim(); if (!u) return ''; if (!/^https?:\/\//i.test(u)) u = 'https://' + u; try { const x = new URL(u); return /^https?:$/.test(x.protocol) && x.hostname.includes('.') ? x.href : ''; } catch { return ''; } };
+  async function fetchPage(u) {
+    const tries = [
+      () => fetch('https://r.jina.ai/' + u, { headers: { 'X-Return-Format': 'html' } }),
+      () => fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(u)),
+    ];
+    for (const t of tries) { try { const r = await t(); if (r.ok) { const html = await r.text(); if (html.length > 200) return html; } } catch {} }
+    throw new Error('fetch');
+  }
+  async function loadSite(u, then) {
+    const url = normUrl(u); if (!url) { $('sitest').style.color = '#ff8a9a'; $('sitest').textContent = 'That doesn\'t look like a web address.'; return false; }
+    steps('Fetching the page…');
+    let html; try { html = await fetchPage(url); } catch { $('sitest').style.color = '#ff8a9a'; $('sitest').textContent = 'Couldn\'t load that site. It may block readers, or the reader is busy: try again in a minute.'; return false; }
+    steps('Laying it out…');
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script, noscript, iframe, object, embed').forEach((n) => n.remove());
+    doc.querySelectorAll('*').forEach((n) => { for (const a of [...n.attributes]) if (/^on/i.test(a.name)) n.removeAttribute(a.name); });
+    const base = doc.createElement('base'); base.href = url; doc.head.prepend(base);
+    frame?.remove(); frame = document.createElement('iframe');
+    frame.setAttribute('sandbox', 'allow-same-origin'); frame.setAttribute('aria-hidden', 'true'); frame.tabIndex = -1;
+    const w = WreckNet.inRoom ? 1280 : Math.min(1600, innerWidth);
+    frame.style.cssText = `position:fixed;left:0;top:0;width:${w}px;height:${innerHeight}px;border:0;opacity:0;pointer-events:none;z-index:-1`;
+    frame.srcdoc = '<!doctype html>' + doc.documentElement.outerHTML; document.body.appendChild(frame);
+    await new Promise((r) => { frame.onload = r; setTimeout(r, 8000); });
+    steps('Loading fonts and images…');
+    const fd = frame.contentDocument; try { await Promise.race([fd.fonts?.ready, new Promise((r) => setTimeout(r, 2500))]); } catch {}
+    await Promise.race([Promise.all([...fd.images].map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; }))), new Promise((r) => setTimeout(r, 4000))]);
+    frame.style.height = Math.min(7000, Math.max(innerHeight, fd.documentElement.scrollHeight)) + 'px';
+    await new Promise((r) => setTimeout(r, 120));
+    steps('Slicing letters…');
+    siteUrl = url; Wreck.source = fd; Wreck.sourceName = new URL(url).hostname.replace(/^www\./, ''); Wreck.map = null; mapId = '';
+    $('title').textContent = 'Wreck ' + Wreck.sourceName; [...$('maps').children].forEach((b) => b.setAttribute('aria-pressed', 'false'));
+    setTimeout(() => steps(''), 1500);
+    then?.(); return true;
+  }
+  $('sitef').addEventListener('submit', async (e) => { e.preventDefault(); const b = e.target.querySelector('button'); b.disabled = true; await loadSite(e.target.u.value, () => startGame()); b.disabled = false; });
+
+  // ---------------------------------------------------------------- sync code: rank, suits, challenges and look, carried to another device
+  const KEYS = ['wreck-xp', 'wreck-unlocks', 'wreck-daily', 'wreck-suit-id', 'wreck-suit', 'wreck-name'];
+  const b64 = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const unb64 = (s) => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
+  const sum = (s) => { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h.toString(36).slice(-4); };
+  $('synccopy').onclick = async () => {
+    const data = {}; for (const k of KEYS) { try { const v = localStorage.getItem(k); if (v != null) data[k] = v; } catch {} }
+    const body = b64(JSON.stringify(data)), code = `WRECK-${body}-${sum(body)}`;
+    try { await navigator.clipboard.writeText(code); $('syncst').style.color = '#2fd08a'; $('syncst').textContent = 'Code copied. Paste it on your other device.'; } catch { prompt('Copy this code', code); }
+  };
+  $('syncf').addEventListener('submit', (e) => {
+    e.preventDefault(); const m = e.target.c.value.trim().match(/^WRECK-([A-Za-z0-9_-]+)-([a-z0-9]{1,4})$/);
+    const bad = (t) => { $('syncst').style.color = '#ff8a9a'; $('syncst').textContent = t; };
+    if (!m || sum(m[1]) !== m[2]) return bad('That code is not valid. Copy the whole code.');
+    let data; try { data = JSON.parse(unb64(m[1])); } catch { return bad('That code is not valid.'); }
+    const get = (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+    const js = (v, d) => { try { return JSON.parse(v) ?? d; } catch { return d; } };
+    // merge, never lose progress: the higher XP, every unlock from both, the better daily progress for the same day
+    set('wreck-xp', String(Math.max(parseInt(get('wreck-xp'), 10) || 0, parseInt(data['wreck-xp'], 10) || 0)));
+    const a = js(get('wreck-unlocks'), {}), b = js(data['wreck-unlocks'], {});
+    const maps = { ...(a.maps || {}) }; for (const [k, v] of Object.entries(b.maps || {})) maps[k] = Math.max(maps[k] || 0, +v || 0);
+    set('wreck-unlocks', JSON.stringify({ maps, daily: Math.max(a.daily || 0, b.daily || 0), seasons: { ...(a.seasons || {}), ...(b.seasons || {}) } }));
+    const da = js(get('wreck-daily'), null), db = js(data['wreck-daily'], null);
+    if (db && (!da || db.day > da.day)) set('wreck-daily', JSON.stringify(db));
+    else if (db && da && db.day === da.day) set('wreck-daily', JSON.stringify({ day: da.day, prog: da.prog.map((v, i) => Math.max(v, db.prog?.[i] || 0)), done: da.done.map((v, i) => v || !!db.done?.[i]) }));
+    for (const k of ['wreck-suit-id', 'wreck-suit', 'wreck-name']) if (typeof data[k] === 'string' && data[k].length < 40) set(k, data[k]);
+    $('syncst').style.color = '#2fd08a'; $('syncst').textContent = 'Progress loaded. Reloading…'; setTimeout(() => location.reload(), 700);
+  });
+
   // share the current level; install as an app; embed code for other sites
   $('share').onclick = async () => {
-    const u = `${location.origin}${location.pathname}?${Wreck.map ? 'map=' + Wreck.map : 'user=' + encodeURIComponent(user)}`, name = Wreck.map ? Wreck.maps.find((m) => m.id === Wreck.map).name : `@${user}`;
+    const u = `${location.origin}${location.pathname}?${siteUrl ? 'url=' + encodeURIComponent(siteUrl) : Wreck.map ? 'map=' + Wreck.map : 'user=' + encodeURIComponent(user)}`, name = siteUrl ? Wreck.sourceName : Wreck.map ? Wreck.maps.find((m) => m.id === Wreck.map).name : `@${user}`;
     try { if (navigator.share) await navigator.share({ title: `Wreck ${name}`, url: u }); else { await navigator.clipboard.writeText(u); $('share').textContent = 'Link copied'; setTimeout(() => ($('share').textContent = 'Share this map'), 1600); } } catch {}
   };
   let installEvt = null; addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; $('install').hidden = false; });
@@ -272,8 +350,8 @@
   requestAnimationFrame(spin);
   // maps: your profile (this page) or one of the built-in levels
   let mapId = (params.get('map') || '').replace(/[^a-z]/g, ''); if (!Wreck.maps.some((m) => m.id === mapId)) mapId = '';
-  const levelKey = () => (mapId ? 'map:' + mapId : user.toLowerCase());
-  const setMap = (id) => { mapId = id; Wreck.map = id || null; [...$('maps').children].forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === id)); $('title').textContent = id ? Wreck.maps.find((m) => m.id === id).name : user.toLowerCase() === 'singhaarav059' ? 'Wreck this profile' : `Wreck @${user}`; };
+  const levelKey = () => (siteUrl ? 'url:' + siteUrl : mapId ? 'map:' + mapId : user.toLowerCase());
+  const setMap = (id) => { mapId = id; Wreck.map = id || null; siteUrl = ''; Wreck.source = null; Wreck.sourceName = null; frame?.remove(); frame = null; [...$('maps').children].forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === id)); $('title').textContent = id ? Wreck.maps.find((m) => m.id === id).name : user.toLowerCase() === 'singhaarav059' ? 'Wreck this profile' : `Wreck @${user}`; };
   [{ id: '', name: 'This profile' }, ...Wreck.maps].forEach((m) => {
     const b = document.createElement('button'); b.dataset.id = m.id; b.title = m.name; const cv = document.createElement('canvas'); cv.width = 208; cv.height = 130;
     const span = document.createElement('span'); span.textContent = m.name; b.append(cv, span); b.onclick = () => setMap(m.id); $('maps').append(b);
@@ -316,9 +394,11 @@
   $('joinf').addEventListener('submit', (e) => { e.preventDefault(); const c = e.target.c.value.trim().toUpperCase(); if (!/^[A-Z0-9]{6}$/.test(c)) return busy(false, 'Room codes have 6 letters and digits.'); run(() => WreckNet.join(c, self())); });
   $('go').onclick = () => WreckNet.start();
   $('leave').onclick = () => WreckNet.leave();
-  $('copy').onclick = async () => { const u = `${location.origin}${location.pathname}?${mapId ? 'map=' + mapId : 'user=' + encodeURIComponent(user)}&room=${WreckNet.room}`; try { await navigator.clipboard.writeText(u); $('copy').textContent = 'Link copied'; } catch { prompt('Copy this invite link', u); } setTimeout(() => ($('copy').textContent = 'Copy invite link'), 1600); };
+  $('copy').onclick = async () => { const u = `${location.origin}${location.pathname}?${siteUrl ? 'url=' + encodeURIComponent(siteUrl) : mapId ? 'map=' + mapId : 'user=' + encodeURIComponent(user)}&room=${WreckNet.room}`; try { await navigator.clipboard.writeText(u); $('copy').textContent = 'Link copied'; } catch { prompt('Copy this invite link', u); } setTimeout(() => ($('copy').textContent = 'Copy invite link'), 1600); };
   const invite = (params.get('room') || '').toUpperCase();
-  if (/^[A-Z0-9]{6}$/.test(invite) || /^QUICK\d$/.test(invite)) run(() => WreckNet.join(invite, self()));
+  const urlParam = params.get('url');
+  const joinInvite = () => { if (/^[A-Z0-9]{6}$/.test(invite) || /^QUICK\d$/.test(invite)) run(() => WreckNet.join(invite, self())); };
+  if (urlParam) { $('sitef').u.value = urlParam; loadSite(urlParam, invite ? null : null).then(joinInvite); } else joinInvite();
 
   // live profile data from the public GitHub API; README HTML is sanitised before it is shown
   function clean(html) {

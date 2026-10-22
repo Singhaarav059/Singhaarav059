@@ -77,7 +77,7 @@
         if (m.t === 'full') { clearTimeout(t); reject(new Error('full')); leave(true); }
         else if (m.t === 'welcome') {
           clearTimeout(t);
-          if (typeof m.level === 'string' && m.level !== level()) { const lv = m.level.slice(0, 60); location.href = (lv.startsWith('map:') ? `?map=${encodeURIComponent(lv.slice(4))}` : `?user=${encodeURIComponent(lv)}`) + `&room=${c}`; return; }
+          if (typeof m.level === 'string' && m.level !== level()) { const lv = m.level.slice(0, 800); location.href = (lv.startsWith('map:') ? `?map=${encodeURIComponent(lv.slice(4))}` : lv.startsWith('url:') ? `?url=${encodeURIComponent(lv.slice(4))}` : `?user=${encodeURIComponent(lv)}`) + `&room=${c}`; return; }
           attach(); resolve(c); if (m.started) ui.start();
         } else if (m.t === 'roster' && Array.isArray(m.players)) {
           players.clear();

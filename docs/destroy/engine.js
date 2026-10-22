@@ -59,14 +59,16 @@
   function rrect(ctx, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); if (r > 0.5 && ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
 
   // ------------------------------------------------------------------ reading the page
+  // read the page being played: this document, or a fetched site laid out in a hidden frame (Wreck.source)
   function extract() {
-    const sx = scrollX, sy = scrollY, vw = Wreck.width || document.documentElement.clientWidth || innerWidth;
-    const docH = Math.min(MAX_PAGE, Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, innerHeight));
-    let bg = getComputedStyle(document.body).backgroundColor;
-    if (alphaOf(bg) < 0.05) bg = getComputedStyle(document.documentElement).backgroundColor;
+    const D = Wreck.source || document, Wv = D.defaultView || window, getComputedStyle = (e) => Wv.getComputedStyle(e);
+    const sx = Wv.scrollX, sy = Wv.scrollY, vw = Wreck.width || D.documentElement.clientWidth || innerWidth;
+    const docH = Math.min(MAX_PAGE, Math.max(D.documentElement.scrollHeight, D.body.scrollHeight, Wv.innerHeight));
+    let bg = getComputedStyle(D.body).backgroundColor;
+    if (alphaOf(bg) < 0.05) bg = getComputedStyle(D.documentElement).backgroundColor;
     if (alphaOf(bg) < 0.05) bg = '#ffffff';
     const boxes = [], glyphs = [], byEl = new Map();
-    const els = document.body.querySelectorAll('*');
+    const els = D.body.querySelectorAll('*');
     for (let n = 0; n < els.length && boxes.length < MAX_BOXES; n++) {
       const el = els[n];
       if (el.closest('[data-wreck]')) continue;
@@ -95,18 +97,18 @@
       const b = { el, x, y, w, h, r: rad, fill, grad, img, stroke, sw, hp: 25 + Math.sqrt(w * h) * 1.4, hits: 0, dead: false };
       boxes.push(b); byEl.set(el, b);
     }
-    const underOf = (el) => { for (let e = el; e && e !== document.body; e = e.parentElement) { const b = byEl.get(e); if (b && (b.fill || b.grad)) return b.fill || b.grad[0]; } return bg; };
+    const underOf = (el) => { for (let e = el; e && e !== D.body; e = e.parentElement) { const b = byEl.get(e); if (b && (b.fill || b.grad)) return b.fill || b.grad[0]; } return bg; };
     for (const b of boxes) { b.under = underOf(b.el.parentElement); b.vis = !!(b.img || b.stroke || b.grad || (b.fill && b.fill !== b.under)); }
     // every visible character, measured where the browser laid it out
-    const range = document.createRange();
-    const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, { acceptNode: (t) => (t.nodeValue.trim() ? 1 : 2) });
+    const range = D.createRange();
+    const tw = D.createTreeWalker(D.body, NodeFilter.SHOW_TEXT, { acceptNode: (t) => (t.nodeValue.trim() ? 1 : 2) });
     let t, stop = false;
     while (!stop && (t = tw.nextNode())) {
       const el = t.parentElement;
       if (!el || el.closest('[data-wreck],script,style,noscript,textarea,select,option')) continue;
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
-      if (hiddenText(el)) continue;
+      if (hiddenText(el, getComputedStyle)) continue;
       const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`, color = alphaOf(cs.color) > 0.05 ? cs.color : '#1f2328', tt = cs.textTransform, s = t.nodeValue, under = underOf(el);
       let prevSpace = true;
       for (let i = 0; i < s.length; i++) {
@@ -125,7 +127,7 @@
     return { boxes, glyphs, bg, vw, pageH: docH, WH: SKY + docH };
   }
   // screen-reader-only and skip-link text is clipped away; the page never shows it
-  function hiddenText(el) {
+  function hiddenText(el, getComputedStyle) {
     for (let e = el, n = 0; e && n < 4; e = e.parentElement, n++) {
       const cs = getComputedStyle(e), r = e.getBoundingClientRect();
       if ((cs.clip && cs.clip !== 'auto') || /inset\(50%|circle\(0/.test(cs.clipPath)) return true;
@@ -1437,8 +1439,8 @@
   function overlay(kind) {
     S.hud.root.querySelector('.ov')?.remove();
     const d = document.createElement('div'); d.className = 'ov';
-    if (kind === 'pause') d.innerHTML = `<div class="pn"><h2>Paused</h2><p>${location.hostname || 'This page'} is waiting.</p><div class="row"><button class="a">Resume</button><button class="b">Rebuild</button><button class="c">Exit</button></div></div>`;
-    else { const t = Math.round(S.time); const st = [['XP earned', S.xpGain || 0], ['Rank', Wreck.progress().name], ['Letters knocked off', S.stats.letters], ['Elements broken', S.stats.elements], ['Explosions', S.stats.explosions], ['Eaten by black holes', S.stats.eaten], ['Shots fired', S.stats.shots], ['Time', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`]]; d.innerHTML = `<div class="pn"><h2>Website destroyed</h2><p>${location.hostname || 'This page'} never stood a chance.</p><div class="st">${st.map(([k, v]) => `<span>${k}</span><span class="v">${typeof v === 'number' ? v.toLocaleString() : v}</span>`).join('')}</div><div class="row"><button class="a">Keep going</button><button class="b go">Rebuild</button><button class="c">Exit</button></div></div>`; }
+    if (kind === 'pause') d.innerHTML = `<div class="pn"><h2>Paused</h2><p>${Wreck.sourceName || location.hostname || 'This page'} is waiting.</p><div class="row"><button class="a">Resume</button><button class="b">Rebuild</button><button class="c">Exit</button></div></div>`;
+    else { const t = Math.round(S.time); const st = [['XP earned', S.xpGain || 0], ['Rank', Wreck.progress().name], ['Letters knocked off', S.stats.letters], ['Elements broken', S.stats.elements], ['Explosions', S.stats.explosions], ['Eaten by black holes', S.stats.eaten], ['Shots fired', S.stats.shots], ['Time', `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`]]; d.innerHTML = `<div class="pn"><h2>Website destroyed</h2><p>${Wreck.sourceName || location.hostname || 'This page'} never stood a chance.</p><div class="st">${st.map(([k, v]) => `<span>${k}</span><span class="v">${typeof v === 'number' ? v.toLocaleString() : v}</span>`).join('')}</div><div class="row"><button class="a">Keep going</button><button class="b go">Rebuild</button><button class="c">Exit</button></div></div>`; }
     d.querySelector('.a').onclick = () => { d.remove(); S.paused = false; }; d.querySelector('.b').onclick = () => { d.remove(); S.paused = false; rebuild(); }; d.querySelector('.c').onclick = stop;
     d.addEventListener('pointerdown', (e) => e.stopPropagation());
     S.paused = true; S.in.fire = false; S.hud.root.appendChild(d);

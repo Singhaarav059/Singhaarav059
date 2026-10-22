@@ -1,0 +1,16 @@
+{
+  "name": "Wreck",
+  "short_name": "Wreck",
+  "description": "Turn any GitHub profile or website into a level and destroy it. Ten weapons, a jetpack, a drone, maps and online rooms.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#120f2e",
+  "theme_color": "#120f2e",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

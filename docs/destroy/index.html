@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Wreck this profile · Aarav Singh</title>
 <meta name="description" content="Turn any GitHub profile, or any website, into a level and destroy it with a stickman. Ten weapons, a jetpack and a black hole." />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#120f2e" />
+<link rel="apple-touch-icon" href="icon-192.png" />
 <meta property="og:title" content="Wreck this profile" />
 <meta property="og:description" content="Ten weapons, a jetpack and a black hole versus a GitHub profile." />
 <style>
@@ -100,6 +103,7 @@
   .suits button.locked canvas { filter: brightness(.25) grayscale(1); } .suits button.locked { cursor: not-allowed; }
   .suits button.locked em { position: absolute; inset: 26% 3px auto; font: 7px/1.4 Silkscreen, monospace; font-style: normal; color: #ffe066; text-align: center; }
   .suits button[aria-pressed="true"] { outline: 3px solid #ffe066; outline-offset: 1px; }
+  .emb code { flex: 1; min-width: 0; font: 10px ui-monospace, Menlo, monospace; color: #9fd8ff; word-break: break-all; }
   .dl span { float: right; color: #a4a8c8; }
   .daily { display: grid; gap: 6px; }
   .drow { background: #0e0f1c; border: 2px solid #07080f; border-radius: 3px; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-size: 11px; }
@@ -164,6 +168,7 @@
     <button class="play" id="play">Play solo</button>
     <div class="lbl">MAP</div>
     <div class="maps" id="maps"></div>
+    <div class="row2"><button id="share" class="btn2">Share this map</button><button id="install" class="btn2" hidden>Install app</button></div>
     <div class="lbl">RANK</div>
     <div class="rank"><canvas id="badge" width="40" height="40"></canvas><div class="rk"><b id="rname">Recruit</b><div class="xpbar"><i id="xpfill"></i></div><small id="rnext"></small></div></div>
     <div class="lbl dl">DAILY CHALLENGES <span id="dends"></span></div>
@@ -192,10 +197,12 @@
     </div>
     <div class="lbl">DESTROY ANOTHER GITHUB PROFILE</div>
     <form class="who" id="who"><input name="u" placeholder="GitHub username, e.g. torvalds" autocomplete="off" spellcheck="false" /><button>Load</button></form>
+    <div class="lbl bm-l">PUT WRECK ON YOUR SITE</div>
+    <div class="bm emb"><code id="embcode"></code><button id="embcopy" class="btn2" style="flex:none">Copy</button></div>
     <div class="lbl bm-l">DESTROY ANY WEBSITE</div>
     <div class="bm"><a id="bm" href="#" title="Drag me to your bookmarks bar">Wreck it</a><span>Drag this to your bookmarks bar, open any site, then click it.</span></div>
     <div class="keys phone" style="display:none">Left thumb moves and jumps (push up), right thumb aims and fires.</div>
-    <div class="keys"><b>A</b> <b>D</b> move · <b>W</b> jump, again to flip, hold to fly · <b>S</b> drop · <b>Click</b> fire · <b>Q</b> grenade · <b>1</b>–<b>0</b> weapons · <b>Esc</b> exit</div>
+    <div class="keys"><b>A</b> <b>D</b> move · <b>W</b> jump, again to flip, hold to fly · <b>S</b> drop · <b>Click</b> fire · <b>Q</b> grenade · <b>1</b>–<b>0</b> weapons (6 twice: Executor) · hold <b>W</b> in the air: jetpack · <b>8</b> drone: WASD, right-click dive · <b>Esc</b> pause</div>
     <a class="back" href="https://github.com/Singhaarav059">← Back to GitHub</a>
   </div>
 </div>
@@ -215,6 +222,18 @@
   const src = new URL('engine.js', location.href).href;
   $('bm').href = `javascript:(()=>{if(window.Wreck)return Wreck.start();const s=document.createElement('script');s.src='${src}?'+Date.now();document.body.appendChild(s)})()`;
   $('bm').addEventListener('click', (e) => { e.preventDefault(); alert('Drag the button to your bookmarks bar, then click it on any website.'); });
+
+  // share the current level; install as an app; embed code for other sites
+  $('share').onclick = async () => {
+    const u = `${location.origin}${location.pathname}?${Wreck.map ? 'map=' + Wreck.map : 'user=' + encodeURIComponent(user)}`, name = Wreck.map ? Wreck.maps.find((m) => m.id === Wreck.map).name : `@${user}`;
+    try { if (navigator.share) await navigator.share({ title: `Wreck ${name}`, url: u }); else { await navigator.clipboard.writeText(u); $('share').textContent = 'Link copied'; setTimeout(() => ($('share').textContent = 'Share this map'), 1600); } } catch {}
+  };
+  let installEvt = null; addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; $('install').hidden = false; });
+  $('install').onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; $('install').hidden = true; };
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  const emb = `<script src="${new URL('engine.js', location.href).href}" data-auto="off" data-button></` + 'script>';
+  $('embcode').textContent = emb;
+  $('embcopy').onclick = async () => { try { await navigator.clipboard.writeText(emb); $('embcopy').textContent = 'Copied'; } catch { prompt('Copy this code', emb); } setTimeout(() => ($('embcopy').textContent = 'Copy'), 1600); };
 
   // scarf colours
   const SKINS = ['#5b6bd6', '#2fb383', '#8b5cf6', '#ff8a3d', '#d8dcef', '#3b4054'];

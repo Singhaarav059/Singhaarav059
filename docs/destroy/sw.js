@@ -1,5 +1,5 @@
 // Offline support: the game files are served from cache first and refreshed in the background.
-const CACHE = 'wreck-v3';
+const CACHE = 'wreck-v4';
 const CORE = ['./', './index.html', './engine.js', './net.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });

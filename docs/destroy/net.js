@@ -56,7 +56,7 @@
       conns.get(id)?.send({ t: 'welcome', level: level(), started, you: id });
       rosterOut(); return;
     }
-    if (!players.has(id) || !['s', 'f', 'r', 'd', 'die', 'db'].includes(m.t)) return;
+    if (!players.has(id) || !['s', 'f', 'r', 'd', 'die', 'db', 'z', 'a'].includes(m.t)) return;
     const out = { ...m, id };
     for (const [pid, c] of conns) if (pid !== id) c.send(out);
     Wreck.remote(id, m);

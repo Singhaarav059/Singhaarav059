@@ -17,11 +17,11 @@
   // Pixel sprites as [x, y, w, h, colour], rear grip at 0,0, pointing +x.
   const C = { d: '#1b1d2e', m: '#3a3d58', l: '#6c7194', b: '#4f8cff', c: '#57e3ff', o: '#ffb020', r: '#ff5d73', g: '#2fd08a', p: '#a77bff', w: '#f2f4ff', y: '#ffe066' };
   const W = [
-    { id: 'pistol', name: 'Pistol', auto: false, cd: 0.16, kind: 'bullet', dmg: 16, pellets: 1, spread: 0.012, speed: 2875, pierce: 6, carve: 4, kick: 4, shake: 1, push: 0, front: 0, kr: 0.42, tr: 0.12, fl: 1.15,
+    { id: 'pistol', name: 'Pistol', auto: false, cd: 0.16, kind: 'bullet', dmg: 16, pellets: 1, spread: 0.012, speed: 2875, pierce: 6, carve: 4, kick: 4, shake: 1, push: 0, front: 3, climb: 0.035, kr: 0.42, tr: 0.12, fl: 1.15,
       px: [[0, -3, 11, 4, C.d], [1, 1, 3, 5, C.d], [11, -2, 3, 2, C.m], [2, -4, 7, 1, C.b], [9, -3, 1, 1, C.c]] },
-    { id: 'smg', name: 'SMG', auto: true, cd: 0.068, kind: 'bullet', dmg: 8, pellets: 1, spread: 0.07, speed: 2500, pierce: 4, carve: 3, kick: 2.6, shake: 0.6, push: 14, front: 10, kr: 0.12, tr: 0.07, fl: 0.95,
+    { id: 'smg', name: 'SMG', auto: true, cd: 0.075, climb: 0.011, kind: 'bullet', dmg: 8, pellets: 1, spread: 0.07, speed: 2500, pierce: 4, carve: 3, kick: 2.6, shake: 0.6, push: 14, front: 10, kr: 0.12, tr: 0.07, fl: 0.95,
       px: [[-6, -2, 5, 3, C.m], [-1, -3, 16, 5, C.d], [5, 2, 3, 6, C.d], [15, -2, 5, 2, C.m], [1, -4, 9, 1, C.g], [12, -1, 2, 1, C.c]] },
-    { id: 'shotgun', name: 'Shotgun', auto: false, cd: 0.62, kind: 'bullet', dmg: 12, pellets: 10, spread: 0.17, speed: 2190, pierce: 3, carve: 3, kick: 7, shake: 3, push: 230, front: 13, ring: true, kr: 0.55, tr: 0.42, fl: 1.9,
+    { id: 'shotgun', name: 'Shotgun', auto: false, cd: 0.62, kind: 'bullet', dmg: 12, pellets: 9, spread: 0.17, speed: 2190, pierce: 3, carve: 3, kick: 7, shake: 3, push: 230, front: 13, ring: true, kr: 0.55, tr: 0.42, fl: 1.9,
       px: [[-9, -1, 8, 4, C.m], [-1, -3, 23, 4, C.d], [9, 1, 8, 3, C.l], [21, -3, 2, 2, C.r], [2, -4, 6, 1, C.r]] },
     { id: 'rocket', name: 'Rocket', auto: false, cd: 0.85, kind: 'rocket', speed: 420, kick: 6, shake: 2, push: 120, front: 11, kr: 0.3, tr: 0.3, fl: 1.5,
       px: [[-12, -4, 32, 7, '#2c6b57'], [19, -5, 4, 9, C.d], [-14, -5, 3, 9, C.d], [1, 3, 3, 5, C.d], [4, -5, 7, 1, C.o], [-6, -1, 18, 1, '#3f8a72']] },
@@ -40,11 +40,21 @@
   ];
   W.push({ id: 'sniper', name: 'Executor', auto: false, cd: 0.4, kind: 'bullet', dmg: 120, pellets: 1, spread: 0, speed: 7000, pierce: 4, carve: 3, kick: 12, push: 240, front: 16, kr: 0.6, tr: 0.5, fl: 1.9, reload: 2.5, px: [] });
   W.find((w) => w.id === 'rocket').reload = 2.5;
+  W.find((w) => w.id === 'sniper').climb = 0.07; W.find((w) => w.id === 'shotgun').climb = 0.05;
+  // a rotary gun after the GAU-17: about 2,000 rounds a minute once the barrels are up to speed (0.5 s to spin up, 0.25 s to stop)
+  W.push({ id: 'minigun', name: 'Minigun', auto: true, cd: 0.03, kind: 'bullet', dmg: 6, pellets: 1, spread: 0.055, speed: 3000, pierce: 4, carve: 3, kick: 1.4, shake: 0.4, push: 26, front: 15, kr: 0.035, tr: 0.04, fl: 1.2, spin: true, climb: 0.004, px: [] });
+  // magazines: rounds per load and reload time in seconds; a third value loads shell by shell
+  const MAG = { pistol: [15, 0.9], smg: [32, 1.3], shotgun: [8, 0.36, 1], sniper: [5, 1.9], minigun: [240, 2.4], rocket: [1, 0.9], rail: [4, 1.6] };
+  // weapon slots: pressing a number again switches to the other gun in that slot
+  const SLOTS = [[0], [1, 11], [2], [3], [4], [5, 10], [6], [7], [8], [9]];
+  const ORDER = SLOTS.flat();
+  const slotOf = (i) => Math.max(0, SLOTS.findIndex((g) => g.includes(i)));
+  const SND = { pistol: 'pistol', smg: 'smg', shotgun: 'shotgun', sniper: 'snipe', minigun: 'mg', drone: 'smg' };
   const NADE = { name: 'Grenade', px: [[-3, -3, 6, 7, '#2c6b57'], [-1, -5, 2, 2, C.l], [1, -5, 3, 1, C.o]] };
 
   // ------------------------------------------------------------------ state
   let S = null;
-  const Wreck = { running: false, start, stop, preview, skin: '#5b6bd6', onExit: null, debug: () => S && { ...S.stats, x: Math.round(S.p.x), y: Math.round(S.p.y), bodies: S.bodies.length, fx: S.fx.length, pct: Math.round(progress() * 1000) / 10, drone: S.p.drone ? { state: S.p.drone.state, x: Math.round(S.p.drone.x), y: Math.round(S.p.drone.y), battery: +S.p.drone.battery.toFixed(1), spin: S.p.drone.spin } : null, droneCd: +(S.p.droneCd || 0).toFixed(1), cam: Math.round(S.cam) }, probe: (x, y) => { if (!S) return null; const h = contentAt(x, y); return h === true ? 'edge' : h ? (h.ch ? 'glyph ' + h.ch : 'box ' + h.el.tagName + '.' + h.el.className + ' ' + Math.round(h.w) + 'x' + Math.round(h.h) + ' fill=' + h.fill + ' under=' + h.under) : solid(x, y) ? 'bg' : 'air'; } };
+  const Wreck = { running: false, start, stop, preview, skin: '#5b6bd6', onExit: null, debug: () => S && { ...S.stats, x: Math.round(S.p.x), y: Math.round(S.p.y), bodies: S.bodies.length, fx: S.fx.length, pct: Math.round(progress() * 1000) / 10, drone: S.p.drone ? { state: S.p.drone.state, x: Math.round(S.p.drone.x), y: Math.round(S.p.drone.y), battery: +S.p.drone.battery.toFixed(1), spin: S.p.drone.spin } : null, droneCd: +(S.p.droneCd || 0).toFixed(1), cam: Math.round(S.cam), w: W[S.p.weapon].id, ammo: S.p.ammo?.[W[S.p.weapon].id], rl: !!S.p.rl, spin: +(S.p.spin || 0).toFixed(2) }, probe: (x, y) => { if (!S) return null; const h = contentAt(x, y); return h === true ? 'edge' : h ? (h.ch ? 'glyph ' + h.ch : 'box ' + h.el.tagName + '.' + h.el.className + ' ' + Math.round(h.w) + 'x' + Math.round(h.h) + ' fill=' + h.fill + ' under=' + h.under) : solid(x, y) ? 'bg' : 'air'; } };
   window.Wreck = Wreck;
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -272,7 +282,7 @@
   }
   // a bullet's small ink splash in the letter's own colour
   function inkPop(x, y, dx, dy, c) { for (let i = 0; i < 6 && S.fx.length < MAX_FX; i++) S.fx.push({ k: 'bit', x, y, vx: dx * rnd(80, 260) + rnd(-120, 120), vy: dy * rnd(80, 200) - rnd(60, 220), c, s: pick([1, 2, 2]), life: rnd(0.5, 1.1), t: 0 }); }
-  function impact(x, y, dx, dy, c) { for (let i = 0; i < 5 && S.fx.length < MAX_FX; i++) S.fx.push({ k: 'spark', x, y, vx: -dx * rnd(80, 260) + rnd(-160, 160), vy: -dy * rnd(80, 220) + rnd(-180, 60), c: i < 2 ? '#ffe066' : c, life: rnd(0.12, 0.3), t: 0 }); S.fx.push({ k: 'ring', x, y, r: 1, max: 7, life: 0.12, t: 0 }); }
+  function impact(x, y, dx, dy, c) { if (S.fx.length < MAX_FX) S.fx.push({ k: 'smoke', x, y, vx: -dx * rnd(20, 60), vy: -dy * rnd(20, 60) - 20, s: rnd(2, 4), life: rnd(0.3, 0.5), t: 0, c: 1 }); for (let i = 0; i < 5 && S.fx.length < MAX_FX; i++) S.fx.push({ k: 'spark', x, y, vx: -dx * rnd(80, 260) + rnd(-160, 160), vy: -dy * rnd(80, 220) + rnd(-180, 60), c: i < 2 ? '#ffe066' : c, life: rnd(0.12, 0.3), t: 0 }); S.fx.push({ k: 'ring', x, y, r: 1, max: 7, life: 0.12, t: 0 }); }
   // loose letters and pieces react to fire: pushed, spun, flashed; pieces break after a few hits
   function bodyAt(x, y, s) {
     for (let i = S.bodies.length - 1; i >= 0; i--) {
@@ -365,7 +375,10 @@
     const bd = Math.hypot(clamp(x, P.x - 8, P.x + 8) - x, clamp(y, P.y - 56, P.y) - y);   // blast distance to the nearest part of the body
     if (Wreck.net && P.alive && bd < r * 1.25) hurt((BLAST[o.w] ?? 60) * (1 - bd / (r * 1.25)) * (o.owner === me() ? 0.5 : 1), o.owner, o.w || 'rocket');
     if (d < r * 2) { const k = 1 - d / (r * 2), ix = (dx / (d + 1)) * 700 * k * power, iy = (dy / (d + 1)) * 760 * k * power - 220 * k; P.vx += ix; P.vy += iy; P.grounded = false; const im = Math.hypot(ix, iy); if (im > 520) P.tumbleV = (P.tumbleV || 0) + (ix >= 0 ? 1 : -1) * Math.min(22, im / 60); }
-    // fire: a pixel fireball, embers that stick and keep burning, smoke
+    // fire: a white-hot ball swelling into orange, a shockwave, embers that stick and keep burning, a smoke column, a scorch mark
+    S.fx.push({ k: 'ball', x, y, r: r * (o.big ? 1.3 : 1), life: 0.36, t: 0 }); S.fx.push({ k: 'wave', x, y, r: r * 0.5, max: r * 3.4, life: 0.4, t: 0 });
+    for (let i = 0; i < 5 * power && S.fx.length < MAX_FX; i++) S.fx.push({ k: 'smoke', x: x + rnd(-r, r) * 0.3, y: y + rnd(-r, r) * 0.3, vx: rnd(-25, 25), vy: rnd(-110, -50), s: rnd(10, 18) * power, life: rnd(1.8, 3.2), t: 0 });
+    onTiles(y - r * 1.9, y + r * 1.9, (c) => { c.globalCompositeOperation = 'source-atop'; const g = c.createRadialGradient(x, y, r * 0.7, x, y, r * 1.9); g.addColorStop(0, 'rgba(22,14,24,.5)'); g.addColorStop(1, 'rgba(22,14,24,0)'); c.fillStyle = g; c.fillRect(x - r * 1.9, y - r * 1.9, r * 3.8, r * 3.8); });
     S.fx.push({ k: 'ring', x, y, r: r * 0.4, max: r * 1.9, life: 0.28, t: 0 }); S.fx.push({ k: 'light', vx: 0, vy: 0, x, y, s: r * 4, a: 0.9, life: 0.3, t: 0 });
     const n = Math.round(r * 0.9 * power) + (o.big ? 60 : 0);
     for (let i = 0; i < n && S.fx.length < MAX_FX; i++) { const a = rnd(0, 6.283), v = rnd(30, 260) * power * (o.big ? 1.8 : 1); S.fx.push({ k: 'fire', x: x + rnd(-r, r) * 0.3, y: y + rnd(-r, r) * 0.3, vx: Math.cos(a) * v, vy: Math.sin(a) * v - rnd(20, 140), s: pick([2, 3, 4, 5, 6]) * (o.big ? 1.6 : 1), life: rnd(0.35, 0.9), t: 0 }); }
@@ -379,24 +392,43 @@
   const trauma = (v) => (S.trauma = Math.min(1, S.trauma + v));
 
   // ------------------------------------------------------------------ sound (synthesised in the browser)
-  let AC = null, noiseBuf = null, muted = false;
+  let AC = null, noiseBuf = null, muted = false, MASTER = null, VERB = null;
   try { muted = localStorage.getItem('wreck-muted') === '1'; } catch {}
   function audio() {
     if (AC) return AC;
     try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
     noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    // everything goes through a compressor; shots and blasts also send to a short city-street reverb
+    MASTER = AC.createDynamicsCompressor(); MASTER.threshold.value = -16; MASTER.knee.value = 12; MASTER.ratio.value = 4; MASTER.attack.value = 0.002; MASTER.release.value = 0.25; MASTER.connect(AC.destination);
+    const ir = AC.createBuffer(2, AC.sampleRate * 1.3 | 0, AC.sampleRate); for (let ch = 0; ch < 2; ch++) { const b = ir.getChannelData(ch); for (let i = 0; i < b.length; i++) b[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / b.length, 3.4) * (i < 400 ? i / 400 : 1); }
+    VERB = AC.createConvolver(); VERB.buffer = ir; const vg = AC.createGain(); vg.gain.value = 0.38; VERB.connect(vg).connect(MASTER);
     return AC;
   }
   const lastSfx = {};
   function sfx(kind, v = 1) {
     if (muted || !AC) return; const t = AC.currentTime;
-    if (lastSfx[kind] && t - lastSfx[kind] < (kind === 'tick' ? 0.03 : kind === 'shot' ? 0.02 : 0.01)) return; lastSfx[kind] = t;
-    const out = AC.createGain(); out.gain.value = 0.45; out.connect(AC.destination);
+    if (lastSfx[kind] && t - lastSfx[kind] < (kind === 'tick' ? 0.03 : kind === 'clink' ? 0.035 : kind === 'shot' || kind === 'mg' ? 0.02 : 0.01)) return; lastSfx[kind] = t;
+    const out = AC.createGain(); out.gain.value = 0.45; out.connect(MASTER);
+    const wet = WET[kind]; if (wet) { const sg = AC.createGain(); sg.gain.value = wet * Math.min(1, v); out.connect(sg).connect(VERB); }
     const noise = (dur, type, f, qv, vol, f2) => { const s = AC.createBufferSource(); s.buffer = noiseBuf; const fl = AC.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur); fl.Q.value = qv; const g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); s.connect(fl).connect(g).connect(out); s.start(t, Math.random() * 0.5); s.stop(t + dur); };
     const tone = (dur, type, f, f2, vol) => { const o = AC.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur); const g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g).connect(out); o.start(t); o.stop(t + dur); };
     if (kind === 'shot') { noise(0.08, 'bandpass', 2600, 0.8, 0.5 * v); tone(0.05, 'square', 220, 70, 0.1 * v); }
+    else if (kind === 'pistol') { noise(0.045, 'highpass', 2600, 0.7, 0.65 * v); noise(0.16, 'bandpass', 850, 0.9, 0.55 * v, 260); tone(0.1, 'sine', 170, 45, 0.4 * v); tone(0.025, 'square', 1900, 700, 0.05 * v); }
+    else if (kind === 'smg') { noise(0.035, 'highpass', 3000, 0.7, 0.5 * v); noise(0.09, 'bandpass', 1150, 1, 0.4 * v, 480); tone(0.06, 'sine', 140, 50, 0.25 * v); }
+    else if (kind === 'mg') { noise(0.03, 'highpass', 2400, 0.7, 0.32 * v); noise(0.06, 'bandpass', 900, 1.2, 0.3 * v, 400); tone(0.045, 'sine', 115, 48, 0.2 * v); }
+    else if (kind === 'shotgun') { noise(0.06, 'highpass', 2000, 0.6, 0.75); noise(0.42, 'lowpass', 2400, 0.5, 0.9, 260); tone(0.3, 'sine', 95, 30, 0.65); tone(0.05, 'square', 320, 80, 0.12); }
+    else if (kind === 'snipe') { noise(0.05, 'highpass', 3600, 0.6, 0.85); noise(0.55, 'lowpass', 1700, 0.5, 0.8, 110); tone(0.4, 'sine', 125, 28, 0.65); setTimeout(() => sfx('echo'), 280); }
+    else if (kind === 'echo') { noise(0.6, 'lowpass', 650, 0.5, 0.2, 140); }
+    else if (kind === 'magout') { noise(0.04, 'bandpass', 2600, 4, 0.35); tone(0.05, 'square', 700, 300, 0.05); setTimeout(() => sfx('slide'), 70); }
+    else if (kind === 'slide') { noise(0.13, 'bandpass', 1500, 1.2, 0.14); }
+    else if (kind === 'magin') { noise(0.05, 'bandpass', 900, 2, 0.55); tone(0.04, 'square', 260, 140, 0.12); setTimeout(() => sfx('tick'), 45); }
+    else if (kind === 'rack') { noise(0.05, 'bandpass', 2200, 3, 0.42); setTimeout(() => sfx('clack'), 110); }
+    else if (kind === 'clack') { noise(0.045, 'bandpass', 1500, 3, 0.5); tone(0.03, 'square', 520, 240, 0.07); }
+    else if (kind === 'shellin') { noise(0.05, 'bandpass', 1200, 2.5, 0.42); tone(0.04, 'triangle', 900, 500, 0.06); }
+    else if (kind === 'clink') { tone(0.07, 'triangle', rnd(3200, 4800), rnd(2600, 3400), 0.04); tone(0.09, 'sine', rnd(5200, 6400), 5000, 0.018); }
+    else if (kind === 'dry') { tone(0.02, 'square', 2400, 1800, 0.06); noise(0.02, 'bandpass', 3000, 4, 0.2); }
     else if (kind === 'heavy') { noise(0.24, 'lowpass', 2000, 0.5, 0.75); tone(0.18, 'square', 130, 40, 0.22); }
-    else if (kind === 'boom') { noise(0.7 * v + 0.25, 'lowpass', 1000, 0.4, 0.9, 70); tone(0.45, 'sine', 110, 28, 0.6 * v); }
+    else if (kind === 'boom') { noise(0.08, 'highpass', 1400, 0.5, 0.6 * v); noise(0.7 * v + 0.25, 'lowpass', 1000, 0.4, 0.9, 70); tone(0.45, 'sine', 110, 28, 0.6 * v); noise(1.2 * v + 0.4, 'lowpass', 240, 0.3, 0.5 * v); }
     else if (kind === 'rail') { tone(0.4, 'sawtooth', 2400, 80, 0.22); noise(0.3, 'highpass', 3200, 0.6, 0.35); tone(0.25, 'sine', 90, 40, 0.4); }
     else if (kind === 'thump') { tone(0.12, 'sine', 220, 80, 0.35); noise(0.08, 'lowpass', 900, 0.4, 0.3); }
     else if (kind === 'tick') tone(0.04, 'triangle', rnd(900, 1600), 400, 0.05);
@@ -417,6 +449,14 @@
     else if (kind === 'charge') { tone(0.3, 'sawtooth', 200, 1800, 0.12); tone(0.3, 'sine', 400, 2400, 0.08); }
     else if (kind === 'pump') { noise(0.05, 'bandpass', 1800, 2, 0.35); setTimeout(() => sfx('tick'), 70); }
     else if (kind === 'hurt') { tone(0.12, 'square', 300, 120, 0.15); noise(0.08, 'bandpass', 900, 1, 0.3); }
+  }
+  const WET = { shot: 0.4, pistol: 0.55, smg: 0.4, mg: 0.25, shotgun: 0.8, snipe: 1, echo: 0.8, boom: 0.9, heavy: 0.7, rail: 0.7, thump: 0.4 };
+  // the minigun motor: a whine that rises with the barrels
+  let whirNode = null;
+  function whir(k) {
+    if (!AC || muted) k = 0;
+    if (k > 0.02 && !whirNode) { const o = AC.createOscillator(); o.type = 'sawtooth'; const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1100; const g = AC.createGain(); g.gain.value = 0; o.connect(f).connect(g).connect(MASTER); o.start(); whirNode = { o, g }; }
+    if (whirNode) { whirNode.o.frequency.setTargetAtTime(38 + 150 * k, AC.currentTime, 0.05); whirNode.g.gain.setTargetAtTime(0.06 * k, AC.currentTime, 0.05); if (k <= 0.02) { const n = whirNode; whirNode = null; n.g.gain.setTargetAtTime(0, AC.currentTime, 0.05); setTimeout(() => n.o.stop(), 300); } }
   }
   let jetNode = null;
   function jetSound(k) {
@@ -585,6 +625,7 @@
     P.kv = (P.kv || 0) + (-P.recoil * 420 - (P.kv || 0) * 30) * dt; P.recoil += P.kv * dt;            // gun kick spring
     P.krv = (P.krv || 0) + (-(P.kr || 0) * 300 - (P.krv || 0) * 24) * dt; P.kr = (P.kr || 0) + P.krv * dt; // gun flip spring
     P.bloom = Math.max(0, (P.bloom || 0) - dt * 0.6);
+    P.climb = Math.max(0, (P.climb || 0) - dt * (P === S.p && S.in.fire ? 0.1 : 0.9));
     P.muzzle -= dt;
     const s = P.scarf; s[0].x = P.x - P.face * 3; s[0].y = P.y - 40;
     for (let i = 1; i < s.length; i++) { const k = s[i], vx = (k.x - k.px) * 0.88, vy = (k.y - k.py) * 0.88; k.px = k.x; k.py = k.y; k.x += vx - P.face * 8 * dt - P.vx * 0.0015; k.y += vy + 400 * dt * dt; }
@@ -597,17 +638,40 @@
   function muzzle(P = S.p) {
     const w = W[P.weapon] || W[0], g = GUN_ART[w.id] || GUN_ART.pistol, a = P.aim, ca = Math.cos(a), sa = Math.sin(a), f = P.face, rc = P.recoil || 0;
     const gx = P.x + f + ca * (12 - rc), gy = P.y - 31 + sa * (12 - rc);
-    return { x: gx + g.mx * ca - f * g.my * sa, y: gy + g.mx * sa + f * g.my * ca, a };
+    return { x: gx + g.mx * ca - f * g.my * sa, y: gy + g.mx * sa + f * g.my * ca, a: a - f * (P.climb || 0) };
   }
+  function ammoOf(P, id) { P.ammo ||= {}; if (P.ammo[id] == null) P.ammo[id] = MAG[id][0]; return P.ammo[id]; }
+  function startReload(P) {
+    const w = W[P.weapon], mag = MAG[w.id]; if (!mag || P.rl || P.drone || !P.alive || ammoOf(P, w.id) >= mag[0]) return;
+    P.rl = { id: w.id, t: 0, dur: mag[1] }; P.spin = 0;
+    sfx(mag[2] ? 'tick' : w.id === 'rail' ? 'stow' : 'magout');
+    if (!mag[2] && w.id !== 'rocket' && w.id !== 'rail') S.fx.push({ k: 'mag', id: w.id, x: P.x + P.face * 5, y: P.y - SH + 6, vx: P.vx * 0.4 + P.face * rnd(-20, 30), vy: rnd(-60, 10), a: 0, va: rnd(4, 9) * P.face, life: 3.2, t: 0 });
+  }
+  // brass flies out of the ejection port, spinning, bounces with a clink and stays on the page
+  function ejectShell(P, ty = 'brass') {
+    if (S.fx.length >= MAX_FX) return;
+    const m = muzzle(P), gx = P.x + P.face * 3, gy = P.y - SH - 3;
+    S.fx.push({ k: 'shell', ty, x: gx + (m.x - gx) * 0.25, y: gy + (m.y - gy) * 0.25, vx: -P.face * rnd(70, 160) + P.vx * 0.5, vy: rnd(-320, -200), a: rnd(0, 3), va: -P.face * rnd(16, 30), life: 3, t: 0 });
+  }
+  function hitMark(player, n, x, y) { S.hitT = 0.14; S.hitK = player ? 1 : 0; if (player && n) S.fx.push({ k: 'num', x: x + rnd(-6, 6), y: y - 8, vx: rnd(-30, 30), vy: -90, n: Math.round(n), big: n >= 50, life: 0.8, t: 0 }); }
   function fire() {
     const P = S.p, w = W[P.weapon];
     if (!P.alive || P.cd > 0 || P.charge >= 0 || (P.reload?.[w.id] > 0)) return;
+    if (w.spin && (P.spin || 0) < 1) return;   // barrels still spinning up
+    const mag = MAG[w.id];
+    if (mag) {
+      const am = ammoOf(P, w.id);
+      if (am <= 0) { if (S.fireQ > 0) { sfx('dry'); S.fireQ = 0; } startReload(P); return; }
+      if (P.rl) { if (!mag[2]) return; P.rl = null; }   // a shell reload can be cut short to fire
+    }
     // semi guns: a fresh press fires at once; held, they repeat a little slower than their cooldown
     if (!w.auto && !(S.fireQ > 0) && !(S.in.fire && P.cd < -0.12)) return;
+    if (mag) P.ammo[w.id]--;
+    P.climb = Math.min(0.09, (P.climb || 0) + (w.climb || 0)); S.flashSeed = 1 + ((Math.random() * 2e9) | 0);
     if (w.kind === 'rail') { P.charge = 0; P.cd = w.cd; S.fireQ = 0; const m = muzzle(); S.fx.push({ k: 'ring', x: m.x, y: m.y, r: 120, max: 4, life: 0.3, t: 0, c: '#2b5bff' }); sfx('charge'); return; }
     if (w.kind === 'drone') { if (!P.drone && P.droneCd <= 0) launchDrone(P); return; }
     S.fired = true; S.fireQ = 0;
-    P.cd = w.cd; S.stats.shots++; if (w.reload && Wreck.net) (P.reload ||= {})[w.id] = w.reload;
+    P.cd = w.auto ? Math.max(P.cd, -0.02) + w.cd : w.cd; S.stats.shots++; if (w.auto) P.heat = Math.min(1.5, (P.heat || 0) + 0.035); if (w.id === 'pistol') P.slideT = 0; if (w.reload && Wreck.net) (P.reload ||= {})[w.id] = w.reload;
     const m = muzzle(), n0 = S.shots.length;
     P.recoil = Math.min(P.recoil + w.kick, w.kick * 1.6); P.kv = 0; P.kr = Math.min((P.kr || 0) + w.kr, w.kr * 1.5); P.krv = 0;
     trauma(w.tr); S.ckx -= Math.cos(m.a) * w.kick * 0.5; S.cky -= Math.sin(m.a) * w.kick * 0.5;
@@ -618,10 +682,12 @@
       const dist = Math.max(50, Math.hypot(S.aimX - m.x, S.aimY - m.y)), spread = w.spread + (w.auto ? P.bloom : 0);
       for (let i = 0; i < w.pellets; i++) { const a = m.a + rnd(-spread, spread) * (w.pellets > 1 ? 1 : Math.random()), v = w.speed * (w.pellets > 1 ? rnd(0.82, 1.08) : 1); S.shots.push({ k: 'b', x: m.x, y: m.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, dmg: w.dmg, pierce: w.pierce, carve: w.carve, life: 1.2, heavy: w.pellets > 1, range: Wreck.net ? 4000 : dist * (w.pellets > 1 ? rnd(0.86, 1.12) : 1), w: w.id, owner: me() }); }
       if (w.auto) P.bloom = Math.min(0.1, (P.bloom || 0) + 0.014);
-      S.muzzle = 0.05; sfx(w.pellets > 1 ? 'heavy' : 'shot');
+      S.muzzle = w.id === 'minigun' ? 0.035 : 0.05; sfx(SND[w.id] || 'shot');
+      if (w.pellets > 1 || w.id === 'sniper') for (let i = 0; i < 5 && S.fx.length < MAX_FX; i++) S.fx.push({ k: 'smoke', x: m.x, y: m.y, vx: Math.cos(m.a) * rnd(60, 200) + rnd(-30, 30), vy: Math.sin(m.a) * rnd(60, 200) - rnd(10, 50), s: rnd(3, 6), life: rnd(0.4, 0.8), t: 0, c: 1 });
       if (w.ring) S.fx.push({ k: 'ring', x: m.x, y: m.y, r: 3, max: 22, life: 0.18, t: 0, c: '#c9f6ff' });
-      if (w.id === 'shotgun') P.pumpT = 0; else S.fx.push({ k: 'shell', x: P.x, y: P.y - SH, vx: -P.face * rnd(60, 140) + P.vx * 0.5, vy: rnd(-260, -170), life: 1, t: 0 });
-    } else if (w.kind === 'rocket') { S.shots.push({ k: 'r', x: m.x, y: m.y, vx: Math.cos(m.a) * w.speed, vy: Math.sin(m.a) * w.speed, life: 4, range: Math.max(50, Math.hypot(S.aimX - m.x, S.aimY - m.y)), owner: me() }); sfx('thump'); S.muzzle = 0.06; }
+      if (w.id === 'shotgun') P.pumpT = 0; else if (w.id === 'sniper') P.boltT = 0; else ejectShell(P);
+    } else if (w.kind === 'rocket') { for (let i = 0; i < 10 && S.fx.length < MAX_FX; i++) { const ba = m.a + Math.PI + rnd(-0.35, 0.35), bv = rnd(120, 420); S.fx.push({ k: i < 4 ? 'fire' : 'smoke', x: m.x - Math.cos(m.a) * 42, y: m.y - Math.sin(m.a) * 42, vx: Math.cos(ba) * bv, vy: Math.sin(ba) * bv, s: rnd(3, 7), life: rnd(0.25, 0.7), t: 0, c: 1 }); }   // backblast
+      S.shots.push({ k: 'r', x: m.x, y: m.y, vx: Math.cos(m.a) * w.speed, vy: Math.sin(m.a) * w.speed, life: 4, range: Math.max(50, Math.hypot(S.aimX - m.x, S.aimY - m.y)), owner: me() }); sfx('thump'); S.muzzle = 0.06; }
     else if (w.kind === 'doom') { S.shots.push({ k: 'd', owner: me(), x: m.x, y: m.y, vx: Math.cos(m.a) * w.speed, vy: Math.sin(m.a) * w.speed - 80, fuse: 0.5, life: 4 }); sfx('heavy'); S.muzzle = 0.08; S.flash = Math.min(0.3, S.flash + 0.1); }
     else if (w.kind === 'hole') { S.shots.push({ k: 'h', owner: me(), x: m.x, y: m.y, vx: Math.cos(m.a) * w.speed, vy: Math.sin(m.a) * w.speed, t: 0, life: 4.2 }); sfx('thump'); }
     else if (w.kind === 'wand') { S.shots.push({ k: 'w', x: m.x, y: m.y, vx: Math.cos(m.a) * w.speed, vy: Math.sin(m.a) * w.speed, life: 2 }); sfx('wand'); }
@@ -631,7 +697,26 @@
   }
   function stepWeapon(P, dt) {
     const w = W[P.weapon];
-    for (const id in P.reload || {}) if (P.reload[id] > 0 && (P.reload[id] -= dt) <= 0 && id === w.id) { sfx('bolt'); S.fx.push({ k: 'shell', x: P.x, y: P.y - SH, vx: -P.face * rnd(60, 140), vy: rnd(-260, -170), life: 1, t: 0 }); }
+    for (const id in P.reload || {}) if (P.reload[id] > 0 && (P.reload[id] -= dt) <= 0 && id === w.id) { sfx('bolt'); ejectShell(P, 'big'); }
+    if (P.rl) {
+      const mag = MAG[P.rl.id];
+      if (P.rl.id !== w.id) P.rl = null;   // switching weapons drops the reload
+      else {
+        const t0 = P.rl.t; P.rl.t += dt;
+        if (mag[2]) { if (P.rl.t >= mag[1]) { P.ammo[w.id]++; sfx('shellin'); P.rl.t = 0; if (P.ammo[w.id] >= mag[0]) { P.rl = null; P.pumpT = 0; } } }
+        else {
+          if (t0 < mag[1] * 0.62 && P.rl.t >= mag[1] * 0.62) sfx(w.id === 'rail' ? 'charge' : 'magin');
+          if (P.rl.t >= mag[1]) { P.ammo[w.id] = mag[0]; P.rl = null; if (w.id === 'pistol' || w.id === 'smg' || w.id === 'minigun') sfx('rack'); else if (w.id === 'sniper') sfx('bolt'); P.kr = Math.min((P.kr || 0) + 0.22, 0.5); P.krv = 0; }
+        }
+      }
+    } else if (MAG[w.id] && ammoOf(P, w.id) <= 0 && P.cd <= 0 && P.charge < 0) startReload(P);
+    if (P.slideT >= 0) { P.slideT += dt; if (P.slideT > 0.1) P.slideT = -1; }
+    if (P.boltT >= 0) { const b0 = P.boltT; P.boltT += dt; if (b0 < 0.16 && P.boltT >= 0.16) { sfx('bolt'); ejectShell(P, 'big'); } if (P.boltT > 0.38) P.boltT = -1; }
+    const spinning = w.spin && S.in.fire && !P.rl && !P.drone && P.alive;
+    P.spin = spinning ? Math.min(1, (P.spin || 0) + dt / 0.5) : Math.max(0, (P.spin || 0) - dt / 0.25);
+    P.spinA = (P.spinA || 0) + (w.spin ? P.spin : 0) * dt * 42;
+    P.heat = Math.max(0, (P.heat || 0) - dt * 0.3);
+    if (P.heat > 0.35 && !S.in.fire && Math.random() < P.heat * dt * 14 && S.fx.length < MAX_FX) { const m = muzzle(P); S.fx.push({ k: 'smoke', x: m.x, y: m.y - 1, vx: rnd(-8, 8), vy: rnd(-45, -20), s: rnd(2, 3.5), life: rnd(0.7, 1.2), t: 0, c: 1 }); }   // a hot barrel smokes
     if (P.charge >= 0) {
       P.charge += dt; P.recoil += rnd(-1, 1) * P.charge * 1.2;
       if (P.charge >= 0.3) {
@@ -643,7 +728,7 @@
         rail(m, me()); net({ t: 'r', x: r1(m.x), y: r1(m.y), a: r3(m.a) });
       }
     }
-    if (P.pumpT >= 0) { const t0 = P.pumpT; P.pumpT += dt; if (t0 < 0.14 && P.pumpT >= 0.14) { sfx('pump'); P.kr = Math.min((P.kr || 0) + 0.2, 0.4); P.krv = 0; S.fx.push({ k: 'shell', x: P.x, y: P.y - SH, vx: -P.face * rnd(60, 140), vy: rnd(-260, -170), life: 1, t: 0, red: 1 }); } if (P.pumpT > 0.4) P.pumpT = -1; }
+    if (P.pumpT >= 0) { const t0 = P.pumpT; P.pumpT += dt; if (t0 < 0.14 && P.pumpT >= 0.14) { sfx('pump'); P.kr = Math.min((P.kr || 0) + 0.2, 0.4); P.krv = 0; ejectShell(P, 'shell'); } if (P.pumpT > 0.4) P.pumpT = -1; }
   }
   function flames(P, m) { const w = W[5]; for (let i = 0; i < w.pellets && S.fx.length < MAX_FX; i++) { const a = m.a + rnd(-w.spread, w.spread), v = w.speed * rnd(0.7, 1.15); S.fx.push({ k: 'flame', owner: P === S.p ? me() : P.id, x: m.x, y: m.y, vx: Math.cos(a) * v + P.vx * 0.4, vy: Math.sin(a) * v + P.vy * 0.2, s: pick([2, 3, 3, 4]), life: rnd(0.35, 0.6), t: 0 }); } }
   function rail(m, owner) { S.cur = owner || null; S.curW = 'rail';
@@ -687,6 +772,7 @@
           const sp = Math.hypot(s.vx, s.vy), dx = s.vx / sp, dy = s.vy / sp; s.dist = (s.dist || 0) + sp * dt / steps;
           if (s.range != null && (s.range -= sp * dt / steps) <= 0) {   // landed on the cursor: hit whatever is there
             const body = bodyAt(s.x, s.y, s), hit = !body && contentAt(s.x, s.y);
+            if ((body || hit) && s.owner === me()) hitMark(false);
             if (body) hitBody(body, s, dx, dy);
             else if (hit && hit.ch) { knock(hit, dx * rnd(230, 430) + rnd(-40, 40), dy * rnd(150, 350) - rnd(90, 200), false, rnd(-22, 22)); inkPop(s.x, s.y, dx, dy, hit.color); }
             else if (hit && hit !== true && hit !== s.last) { impact(s.x, s.y, dx, dy, hit.fill || hit.stroke || '#ffffff'); if (++hit.hits >= (hit.w * hit.h < 6000 ? 3 : hit.w * hit.h < 30000 ? 5 : 8)) detach(hit, s.x - dx * 20, s.y - dy * 20, 300); }
@@ -695,13 +781,13 @@
           }
           if (s.x < 0 || s.x > L.vw || s.y > L.WH || s.y < -400) { gone = true; break; }
           const who = playerAt(s.x, s.y, s.owner);
-          if (who) { impact(s.x, s.y, dx, dy, who.skin || Wreck.skin); if (who === S.p) hurt(dmgOf(s), s.owner, s.w); else if (who === S.p.drone) { who.hp -= dmgOf(s); sfx('tick'); } gone = true; break; }
+          if (who) { impact(s.x, s.y, dx, dy, who.skin || Wreck.skin); if (s.owner === me()) hitMark(true, dmgOf(s), s.x, s.y); if (who === S.p) hurt(dmgOf(s), s.owner, s.w); else if (who === S.p.drone) { who.hp -= dmgOf(s); sfx('tick'); } gone = true; break; }
           const body = bodyAt(s.x, s.y, s);
-          if (body) { hitBody(body, s, dx, dy); if (body.k !== 'g' || --s.pierce < 0) gone = true; continue; }
+          if (body) { hitBody(body, s, dx, dy); if (s.owner === me()) hitMark(false); if (body.k !== 'g' || --s.pierce < 0) gone = true; continue; }
           const hit = contentAt(s.x, s.y);
           if (hit && hit === s.last) continue;   // still inside the element it already hit
           if (hit) s.last = hit;
-          if (hit && hit.ch) { knock(hit, dx * rnd(230, 430) + rnd(-40, 40), dy * rnd(150, 350) - rnd(90, 200), false, rnd(-22, 22)); inkPop(s.x, s.y, dx, dy, hit.color); if (--s.pierce < 0) gone = true; continue; }
+          if (hit && hit.ch) { knock(hit, dx * rnd(230, 430) + rnd(-40, 40), dy * rnd(150, 350) - rnd(90, 200), false, rnd(-22, 22)); inkPop(s.x, s.y, dx, dy, hit.color); if (s.owner === me()) hitMark(false); if (--s.pierce < 0) gone = true; continue; }
           if (hit) {
             impact(s.x, s.y, dx, dy, hit === true ? '#c9cde6' : hit.fill || hit.stroke || '#ffffff');
             if (hit === true) carve(s.x, s.y, 2.5, { bits: 4, knock: false, detach: false, scorch: false });
@@ -790,8 +876,8 @@
       const s = { k: 'b', x: mx, y: my, vx: Math.cos(a) * 2915, vy: Math.sin(a) * 2915, dmg: 5, pierce: 5, carve: 3, life: 0.8, w: 'drone', owner: me(), range: Wreck.net ? 4000 : Math.max(40, dist) * rnd(0.95, 1.05), tracer: d.rounds % 3 === 0 };
       S.shots.push(s); net({ t: 'f', s: [ser(s)] }); d.rounds++; S.stats.shots++;
       d.vx -= Math.cos(a) * 9; d.vy -= Math.sin(a) * 9; d.tiltV -= Math.cos(a) * 0.45; d.kick = 2;
-      S.fx.push({ k: 'light', vx: 0, vy: 0, x: mx, y: my, s: 50, a: 0.4, life: 0.04, t: 0 }); d.muzzle = 0.03; sfx('shot', 0.45);
-      if (d.rounds % 2) S.fx.push({ k: 'shell', x: d.x, y: d.y + 4, vx: -Math.cos(a) * rnd(60, 120), vy: rnd(-160, -80), life: 0.7, t: 0 });
+      S.fx.push({ k: 'light', vx: 0, vy: 0, x: mx, y: my, s: 50, a: 0.4, life: 0.04, t: 0 }); d.muzzle = 0.03; sfx('smg', 0.4);
+      if (d.rounds % 2 && S.fx.length < MAX_FX) S.fx.push({ k: 'shell', ty: 'brass', x: d.x, y: d.y + 4, vx: -Math.cos(a) * rnd(60, 120), vy: rnd(-160, -80), a: 0, va: rnd(-25, 25), life: 2, t: 0 });
     }
   }
   function droneBlast(P, r, power) {
@@ -872,7 +958,16 @@
       }
       if (k === 'spark') { f.vy += 1300 * dt; f.vx *= 1 - dt * 2; }
       else if (k === 'smoke') { f.vx *= 1 - dt * 2; f.vy = f.vy * (1 - dt * 1.5) - 25 * dt; }
-      else if (k === 'shell') { f.vy += 1500 * dt; if (solid(f.x, f.y + f.vy * dt)) { f.vy *= -0.35; f.vx *= 0.6; } }
+      else if (k === 'shell') {
+        f.vy += 1500 * dt; f.a += f.va * dt;
+        if (solid(f.x + f.vx * dt, f.y + 1 + f.vy * dt)) {
+          if (Math.abs(f.vy) > 110) { f.vy *= -0.34; f.vx *= 0.55; f.va *= -0.5; sfx('clink'); }
+          else { casing(f); S.fx.splice(i, 1); continue; }
+        }
+      } else if (k === 'mag') {
+        f.vy += 1500 * dt; f.a += f.va * dt;
+        if (solid(f.x + f.vx * dt, f.y + 4 + f.vy * dt)) { if (Math.abs(f.vy) > 140) { f.vy *= -0.25; f.vx *= 0.5; f.va *= -0.4; sfx('clink'); } else { f.vx = f.vy = f.va = 0; } }
+      } else if (k === 'num') { f.vy += 160 * dt; }
       else if (k === 'fire') { f.vx *= 1 - dt * 3; f.vy = f.vy * (1 - dt * 3) - 160 * dt; }
       else if (k === 'ember') {
         if (!f.stuck) { f.vy += G * 0.8 * dt; if (solid(f.x + f.vx * dt, f.y + f.vy * dt)) { f.stuck = true; f.vx = f.vy = 0; } }
@@ -889,6 +984,12 @@
     }
     for (let i = S.beams.length - 1; i >= 0; i--) if ((S.beams[i].t += dt) > 0.4) S.beams.splice(i, 1);
     for (let i = S.chutes.length - 1; i >= 0; i--) { const c = S.chutes[i]; c.t += dt; c.vy += (28 - c.vy) * Math.min(1, dt * 1.6); c.vx -= c.vx * 0.8 * dt; c.x += (c.vx + Math.sin(c.t * 3.1) * 26) * dt; c.y += c.vy * dt; if (c.t > 2.4) S.chutes.splice(i, 1); }
+  }
+  // a spent casing at rest is painted into the page, so brass piles up where you fought
+  function casing(f) {
+    const L = S.L; if (f.x < 0 || f.x >= L.vw || f.y < 0 || f.y >= L.WH) return;
+    const big = f.ty === 'big', red = f.ty === 'shell', w = big ? 5 : red ? 4 : 3, flat = Math.abs(Math.sin(f.a)) < 0.7;
+    onTiles(f.y - 4, f.y + 4, (c) => { const x = f.x | 0, y = (f.y | 0) - 1, ww = flat ? w : 2, hh = flat ? 2 : w > 3 ? 3 : 2; c.globalCompositeOperation = 'source-over'; c.fillStyle = red ? '#c9405a' : '#b8862a'; c.fillRect(x, y, ww, hh); c.fillStyle = red ? '#ffcf3d' : '#ffd773'; c.fillRect(x, y, red ? 1 : ww, 1); });
   }
   function stamp(x, y, c, s) {
     const L = S.L; if (x < 0 || x >= L.vw || y < 0 || y >= L.WH) return;
@@ -1020,6 +1121,7 @@
     hole: { mx: 24, my: -1, w: 35, h: 15, ox: -8, oy: -7, paint: (c) => { Rf(c, '#8b5cf6', -8, -5, 24, 8); Rf(c, '#b493ff', -8, -5, 24, 1); Rf(c, '#5b3aa6', -8, 2, 24, 1); Ef(c, GD, 20, -1, 6, 6); Ef(c, '#05060b', 20, -1, 4, 4); Rf(c, '#d2bcff', 19, -2, 2, 2); Rf(c, GD, 0, 3, 3, 5); } },
     wand: { mx: 25, my: -1, w: 30, h: 9, ox: -3, oy: -5, paint: (c) => { Rf(c, GM, -2, -1, 24, 2); Rf(c, GL, -2, -1, 24, 1); Pf(c, '#ffe066', [[22, -4], [26, -1], [22, 3], [19, -1]]); Rf(c, '#fff7c2', 21, -2, 2, 1); Rf(c, GD, -2, -2, 6, 4); } },
     sniper: { mx: 41, my: -4, w: 57, h: 15, ox: -14, oy: -10, paint: (c) => { Pf(c, GM, [[-14, -3], [-2, -5], [-2, 0], [-14, 2]]); Rf(c, GD, -14, -1, 6, 3); Rf(c, GD, -2, -6, 16, 5); Rf(c, GL, -2, -6, 16, 1); Rf(c, GM, 14, -5, 25, 2); Rf(c, GH, 14, -5, 25, 1); Rf(c, GD, 38, -6, 3, 4); Rf(c, GD, 1, -10, 13, 3); Rf(c, '#57e3ff', 12, -10, 2, 3); Rf(c, GL, 2, -10, 8, 1); Rf(c, GL, 6, -3, 3, 1); Rf(c, GD, 0, -1, 3, 5); Rf(c, GD, 20, -3, 1, 6); } },
+    minigun: { mx: 37, my: -4, w: 53, h: 21, ox: -15, oy: -13, paint: (c) => { Rf(c, GM, -15, -9, 7, 10); Rf(c, GL, -15, -9, 7, 1); Rf(c, GD, -14, -6, 5, 1); Rf(c, GD, -8, -10, 19, 12); Rf(c, GL, -8, -10, 19, 1); Rf(c, '#ffb020', -5, -7, 5, 2); Rf(c, GD, -5, -7, 1, 2); Rf(c, GD, -2, -7, 1, 2); Rf(c, GD, 1, -13, 11, 2); Rf(c, GD, 2, -13, 2, 4); Rf(c, GD, 9, -13, 2, 4); Rf(c, GM, 11, -8, 24, 8); Rf(c, GD, 14, -9, 3, 10); Rf(c, GD, 27, -9, 3, 10); Rf(c, GL, 34, -8, 3, 8); Rf(c, GH, 34, -8, 1, 8); Rf(c, '#2c6b57', -6, 2, 12, 6); Rf(c, '#4a9a7e', -6, 2, 12, 1); Rf(c, '#1d4a3c', -6, 7, 12, 1); Rf(c, '#d8a531', 6, 2, 3, 2); Rf(c, GD, -1, 2, 3, 5); } },
     nade: { mx: 0, my: 0, w: 8, h: 10, ox: -4, oy: -6, paint: (c) => { Ef(c, '#2c6b57', 0, 0, 3.5, 4); Rf(c, '#4a9a7e', 1, -3, 1, 3); Rf(c, GL, -1, -6, 2, 2); Rf(c, '#ffb020', 1, -6, 3, 1); } },
   };
   const puffs = new Map();
@@ -1039,19 +1141,31 @@
     const lim = (pt, ax, ay, bx, by) => { const a = Math.atan2(by - ay, bx - ax) - Math.PI / 2; c.save(); c.translate(Math.round(ax), Math.round(ay)); c.rotate(a); c.drawImage(pt.cv, -pt.jx, -pt.jy); c.restore(); };
     c.save(); c.translate(Math.round(P.x), Math.round(P.y)); if (f < 0) c.scale(-1, 1);
     const air = !P.grounded, aim = f < 0 ? Math.PI - P.aim : P.aim, spd = Math.min(1, Math.abs(P.vx) / RUN), bob = air ? 0 : Math.abs(Math.sin(P.run)) * spd * 1.5, sq = (P.land || 0) * 4;
-    const hip = [0, -25 - bob + sq], neck = [1, -44 - bob + sq], sh = [1, -38 - bob + sq];
+    const now = S.time ?? performance.now() / 1000, br = air || spd > 0.2 ? 0 : Math.sin(now * 2.3 + (P.x || 0) * 0.013) * 0.8;   // breathing at rest
+    const lean = (air ? clamp(P.vx / RUN, -1, 1) * f * 1.2 : spd * (P.vx * f >= 0 ? 2.4 : -1.4)) - (P.recoil || 0) * 0.3 - (P.hurtT > 0 ? P.hurtT * 7 : 0);
+    const hip = [0, -25 - bob + sq], neck = [1 + lean, -44 - bob + sq + br * 0.5], sh = [1 + lean, -38 - bob + sq + br];
     if (P.flip >= 0) { c.translate(0, -24); c.rotate(P.flip * Math.PI * 2); c.translate(0, 24); }
     if (P.tumble) { c.translate(0, -26); c.rotate(P.tumble * f); c.translate(0, 26); }
     const legs = [0, 1].map((side) => {
       let fx, fy;
       if (!air) { const ph = P.run + side * Math.PI; fx = Math.sin(ph) * 11 * spd + (side ? 2 : -2); fy = -Math.max(0, Math.cos(ph)) * 6 * spd; }
-      else { fx = side ? 7 : -4; fy = -10 - (side ? 4 : 0); }
+      else if (P.jetK > 0.3) { fx = side ? 3 : -3; fy = -2 - (side ? 3 : 0); }   // flying: legs hang
+      else { const up = clamp(-(P.vy || 0) / 700, -1, 1); fx = side ? 7 + 2 * up : -4 - 2 * Math.max(0, -up); fy = side ? -10 - 6 * Math.max(0, up) + 5 * Math.max(0, -up) : -12 - 5 * Math.max(0, up) + 7 * Math.max(0, -up); }   // tucked going up, reaching for the ground coming down
       return ik(hip[0], hip[1], fx, fy, 12, 13, -1);
     });
     const ca = Math.cos(aim), sa = Math.sin(aim), rc = P.recoil || 0;
     const grip = [sh[0] + ca * (12 - rc), sh[1] + 7 + sa * (12 - rc)];
-    const fg = w.front ? [grip[0] + ca * w.front, grip[1] + sa * w.front] : [sh[0] - 2, sh[1] + 18];
-    const rear = ik(sh[0], sh[1], grip[0], grip[1], 10, 11, 1), front = ik(sh[0], sh[1], fg[0], fg[1], 10, 11, w.front ? 1 : -1);
+    // moving parts: reload tilt, the pump, the bolt, the slide
+    const rl = P.rl && P.rl.id === w.id ? P.rl : null, re = rl ? clamp(rl.t / rl.dur, 0, 1) : 0, shellLoad = rl && MAG[w.id]?.[2];
+    const tilt = rl ? (shellLoad ? 0.25 : 0.45 * Math.sin(Math.min(1, re * 1.25) * Math.PI)) : 0;
+    const gunA = aim - (P.kr || 0) - (P.climb || 0) - tilt, gc2 = Math.cos(gunA), gs2 = Math.sin(gunA), at = (u, v2) => [grip[0] + u * gc2 - v2 * gs2, grip[1] + u * gs2 + v2 * gc2];
+    const pump = P.pumpT >= 0 ? 6 * Math.sin(clamp((P.pumpT - 0.04) / 0.32, 0, 1) * Math.PI) : 0, bolt = P.boltT >= 0 ? Math.sin(clamp(P.boltT / 0.38, 0, 1) * Math.PI) : 0;
+    const slide = w.id === 'pistol' ? (MAG.pistol && P.ammo?.pistol === 0 ? 3 : P.slideT >= 0 ? 3 * (1 - P.slideT / 0.1) : 0) : 0;
+    let fg = w.front ? at(w.front - (w.id === 'shotgun' ? pump : 0), 0) : [sh[0] - 2, sh[1] + 18];
+    if (rl && !shellLoad && w.id !== 'rail' && w.id !== 'rocket') { const d2 = Math.sin(re * Math.PI); fg = at(6, 4 + 12 * d2); }   // the free hand drops for a fresh magazine and brings it up
+    else if (shellLoad) fg = at(9, 3 + 4 * Math.abs(Math.sin(re * Math.PI)));                            // thumbing shells into the loading port
+    const rg = bolt > 0 ? at(3 - bolt * 6, -7) : grip;                                                     // the trigger hand works the bolt
+    const rear = ik(sh[0], sh[1], rg[0], rg[1], 10, 11, 1), front = ik(sh[0], sh[1], fg[0], fg[1], 10, 11, w.front || rl ? 1 : -1);
     const dep = P.packT >= 0 ? clamp(P.packT / 0.14, 0, 1) * (P.stowT >= 0 ? 1 - P.stowT / 0.22 : 1) : 0;
     if (dep > 0) { const nx = neck[0] - 6, ny = neck[1] + 19; Rf(c, OUT, nx - 5, ny - 1, 4, 2 + 5 * dep); Rf(c, OUT, nx + 1, ny - 1, 4, 2 + 5 * dep); Rf(c, '#6a7190', nx - 4, ny, 2, 4 * dep); Rf(c, '#6a7190', nx + 2, ny, 2, 4 * dep); Rf(c, OUT, nx - 9, ny - 12, 3 + 4 * dep, 3); Rf(c, OUT, nx + 6 - 4 * dep, ny - 12, 3 + 4 * dep, 3); if (P.jetK > 0.05) { Rf(c, '#ffe066', nx - 4, ny + 4 * dep, 2, 2 + 3 * P.jetK); Rf(c, '#ffe066', nx + 2, ny + 4 * dep, 2, 2 + 3 * P.jetK); } }
     lim(parts.pack, neck[0] - 6, neck[1] + 3, neck[0] - 6, neck[1] + 20);
@@ -1060,8 +1174,15 @@
     lim(parts.torso, neck[0], neck[1], hip[0], hip[1] + 1);
     const hd = parts.head; c.save(); c.translate(neck[0], neck[1] + 1); c.rotate(clamp(aim * 0.35, -0.3, 0.3)); c.drawImage(hd.cv, -hd.jx, -hd.jy); c.restore();
     lim(parts.thigh, hip[0], hip[1], legs[0][0], legs[0][1]); lim(parts.shin, legs[0][0], legs[0][1], legs[0][2], legs[0][3]);
-    c.save(); c.translate(Math.round(grip[0]), Math.round(grip[1])); c.rotate(aim - (P.kr || 0)); c.drawImage(g.s.cv, g.s.ox, g.s.oy);
-    if (P.muzzle > 0 && w.kind !== 'drone') { const z = Math.max(0.9, S.muzzleSize || 1); c.translate(g.mx, g.my); Rf(c, '#ffb020', 0, -4 * z, 11 * z, 8 * z); Rf(c, '#ffe066', 0, -3 * z, 9 * z, 6 * z); Rf(c, '#ffffff', 0, -1.5 * z, 5 * z, 3 * z); Rf(c, '#ffe066', 11 * z, -1 * z, 5 * z, 2 * z); }
+    c.save(); c.translate(Math.round(grip[0]), Math.round(grip[1])); c.rotate(gunA);
+    const gs = g.s.cv;
+    if (w.id === 'pistol' && slide > 0) { c.drawImage(gs, 0, 4, gs.width, gs.height - 4, g.s.ox, g.s.oy + 4, gs.width, gs.height - 4); c.drawImage(gs, 0, 0, gs.width, 4, g.s.ox - slide, g.s.oy, gs.width, 4); if (slide > 2) Rf(c, '#d8a531', 7, -5, 2, 1); }   // the slide blows back (and locks open when empty)
+    else c.drawImage(gs, g.s.ox, g.s.oy);
+    if (w.id === 'shotgun') { Rf(c, GD, 14, -3, 9, 3); Rf(c, OUT, 13 - pump, -4, 11, 5); Rf(c, GL, 14 - pump, -3, 9, 3); Rf(c, GM, 14 - pump, -1, 9, 1); Rf(c, GD, 16 - pump, -3, 1, 3); Rf(c, GD, 19 - pump, -3, 1, 3); }   // the pump slides back and forward
+    if (w.id === 'sniper') { Rf(c, OUT, 2 - bolt * 6, -9, 4, 4); Rf(c, GH, 3 - bolt * 6, -8, 2, 2); }   // bolt handle
+    if (w.id === 'minigun') { const sa2 = P.spinA || 0; for (let i = 0; i < 3; i++) { const ph = Math.sin(sa2 + i * 2.094); Rf(c, ph > 0.5 ? GH : ph > -0.2 ? GL : GD, 11, -7 + i * 2 + (i > 0 ? 1 : 0), 23, 1); } Rf(c, GD, 14, -9, 3, 10); Rf(c, GD, 27, -9, 3, 10); if ((P.heat || 0) > 0.6) { c.globalAlpha = Math.min(0.8, (P.heat - 0.6) * 1.2); Rf(c, '#ff5d3d', 30, -7, 4, 6); Rf(c, '#ffb020', 31, -6, 2, 4); c.globalAlpha = 1; } }   // spinning barrels glow when hot
+    if (P.rl && P.rl.t / P.rl.dur > 0.25 && P.rl.t / P.rl.dur < 0.62 && !MAG[w.id]?.[2] && w.id !== 'rail' && w.id !== 'rocket') { c.restore(); c.save(); c.translate(Math.round(front[2]), Math.round(front[3])); c.rotate(gunA + 0.6); Rf(c, OUT, -3, -1, 6, 9); Rf(c, w.id === 'minigun' ? '#2c6b57' : GD, -2, 0, 4, 7); Rf(c, '#d8a531', -1, -1, 2, 1); }   // the fresh magazine in hand
+    else if (P.muzzle > 0 && w.kind !== 'drone' && w.kind !== 'flame') { c.translate(g.mx, g.my); muzzleFlash(c, w.id, Math.max(0.9, S.muzzleSize || 1), S.flashSeed); }
     c.restore();
     lim(parts.upper, sh[0], sh[1], rear[0], rear[1]); lim(parts.fore, rear[0], rear[1], rear[2], rear[3]);
     c.restore();
@@ -1231,6 +1352,69 @@
 
   // ------------------------------------------------------------------ drawing (1x world, scaled to the screen with crisp pixels)
   function sprite(w) { if (w._spr) return w._spr; const minX = Math.min(...w.px.map((r) => r[0])), minY = Math.min(...w.px.map((r) => r[1])), maxX = Math.max(...w.px.map((r) => r[0] + r[2])), maxY = Math.max(...w.px.map((r) => r[1] + r[3])); const cv = document.createElement('canvas'); cv.width = maxX - minX + 2; cv.height = maxY - minY + 2; const c = cv.getContext('2d'); c.fillStyle = OUT; for (const r of w.px) c.fillRect(r[0] - minX, r[1] - minY, r[2] + 2, r[3] + 2); for (const r of w.px) { c.fillStyle = r[4]; c.fillRect(r[0] - minX + 1, r[1] - minY + 1, r[2], r[3]); } return (w._spr = { cv, ox: minX - 1, oy: minY - 1 }); }
+  // soft light: emissive things are also drawn into a quarter-size buffer that is added back blurred, so fire, tracers and flashes bloom
+  const blobs = new Map();
+  function blob(col) { let b = blobs.get(col); if (b) return b; b = document.createElement('canvas'); b.width = b.height = 64; const x = b.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, `rgba(${col},1)`); g.addColorStop(0.3, `rgba(${col},.5)`); g.addColorStop(1, `rgba(${col},0)`); x.fillStyle = g; x.fillRect(0, 0, 64, 64); blobs.set(col, b); return b; }
+  const HOT = '255,190,90', FIREC = '255,120,40', BLUE = '90,170,255', VIOLET = '170,110,255', GOLD = '255,224,102';
+  function glowPass(v, cam) {
+    const gc = S.gctx, gw = S.glow.width, gh = S.glow.height, GS = gw / S.vw, top = cam - 60, bot = cam + S.vh + 60;
+    gc.setTransform(1, 0, 0, 1, 0, 0); gc.globalCompositeOperation = 'source-over'; gc.globalAlpha = 1; gc.clearRect(0, 0, gw, gh);
+    gc.setTransform(GS, 0, 0, GS, 0, -cam * GS); gc.globalCompositeOperation = 'lighter';
+    const gl = (x, y, r, col, a) => { if (a <= 0.01 || y < top - r || y > bot + r) return; gc.globalAlpha = Math.min(1, a); gc.drawImage(blob(col), x - r, y - r, r * 2, r * 2); };
+    for (const f of S.fx) {
+      const e = f.t / f.life, k = f.k;
+      if (k === 'light') gl(f.x, f.y, f.s, f.c || HOT, f.a * (1 - e) * 1.4);
+      else if (k === 'fire' || k === 'flame') gl(f.x, f.y, (f.s || 3) * 4.5, FIREC, 0.32 * (1 - e));
+      else if (k === 'ember') gl(f.x, f.y, 7, FIREC, 0.45);
+      else if (k === 'spark') gl(f.x, f.y, 5, GOLD, 0.5 * (1 - e));
+      else if (k === 'ball') gl(f.x, f.y, f.r * (3 + e * 2), HOT, (1 - e) * 1.3);
+    }
+    gc.globalAlpha = 1; gc.lineCap = 'round';
+    for (const s of S.shots) {
+      if (s.k === 'b') { const sp = Math.hypot(s.vx, s.vy) || 1, len = Math.min(s.dist || 0, s.w === 'sniper' ? 120 : 40); gc.strokeStyle = s.w === 'sniper' ? 'rgba(150,230,255,.9)' : 'rgba(255,190,90,.75)'; gc.lineWidth = s.w === 'sniper' ? 14 : 8; gc.beginPath(); gc.moveTo(s.x, s.y); gc.lineTo(s.x - (s.vx / sp) * len, s.y - (s.vy / sp) * len); gc.stroke(); }
+      else if (s.k === 'r') gl(s.x, s.y, 34, FIREC, 0.9);
+      else if (s.k === 'd') gl(s.x, s.y, 30, HOT, 0.6);
+      else if (s.k === 'h') gl(s.x, s.y, 60, VIOLET, 0.7);
+      else if (s.k === 'w') gl(s.x, s.y, 22, GOLD, 0.8);
+      else if (s.k === 'n' || s.k === 'm') { if ((s.fuse * 8 | 0) % 2) gl(s.x, s.y - 4, 10, '255,80,100', 0.8); }
+    }
+    for (const b of S.beams) { const e = b.t / 0.4; gc.globalAlpha = 1 - e; gc.strokeStyle = `rgba(${BLUE},1)`; gc.lineWidth = 40 * (1 - e) + 8; gc.beginPath(); gc.moveTo(b.x0, b.y0); gc.lineTo(b.x1, b.y1); gc.stroke(); }
+    gc.globalAlpha = 1;
+    const muz = (P) => { if (P.muzzle > 0 && P.alive && !P.drone) { const m = muzzle(P), w = W[P.weapon]; if (w.kind !== 'drone' && w.kind !== 'flame') gl(m.x, m.y, 36 + 26 * (w.fl || 1), HOT, w.auto ? 0.45 : 0.75); } };
+    muz(S.p); for (const R of S.remotes.values()) muz(R);
+    if (S.p.drone?.muzzle > 0) gl(S.p.drone.x, S.p.drone.y, 40, HOT, 0.8);
+    // compose: add the blurred light back over the scene
+    v.setTransform(1, 0, 0, 1, 0, 0); v.globalCompositeOperation = 'lighter'; v.imageSmoothingEnabled = true; v.globalAlpha = 0.8;
+    v.drawImage(S.glow, 0, 0, gw / GS, gh / GS);
+    v.globalAlpha = 1; v.globalCompositeOperation = 'source-over'; v.imageSmoothingEnabled = false; v.setTransform(1, 0, 0, 1, 0, -cam);
+  }
+  // a muzzle flash: a white core inside petals of yellow and orange, a new shape every shot
+  function muzzleFlash(c, id, z, seed) {
+    let sd = seed || 7; const r = (n) => { sd = (sd * 16807) % 2147483647; return (sd / 2147483647) * n; };
+    const L = (id === 'shotgun' ? 17 : id === 'sniper' ? 22 : id === 'minigun' ? 12 : id === 'smg' ? 12 : id === 'rail' ? 14 : 10) * z, H = (id === 'shotgun' ? 6 : id === 'sniper' ? 5 : 4) * z;
+    Pf(c, '#ff7a3d', [[0, -H], [L * (0.55 + r(0.3)), -H * (0.5 + r(0.4))], [L * (1 + r(0.45)), 0], [L * (0.55 + r(0.3)), H * (0.5 + r(0.4))], [0, H]]);
+    for (const sgn of [-1, 1]) Pf(c, '#ffb020', [[1, -sgn], [L * (0.2 + r(0.25)), sgn * (H + 2 + r(5) * z)], [L * (0.35 + r(0.2)), sgn * 1]]);
+    if (id === 'sniper' || id === 'pistol') for (const sgn of [-1, 1]) Pf(c, '#ffe066', [[L * 0.55, -sgn], [L * 0.62, sgn * (H + 3 * z)], [L * 0.7, sgn]]);   // brake vents
+    Pf(c, '#ffe066', [[0, -H * 0.65], [L * (0.5 + r(0.25)), -H * 0.3], [L * (0.8 + r(0.25)), 0], [L * (0.5 + r(0.25)), H * 0.3], [0, H * 0.65]]);
+    Ef(c, '#ffffff', 2.5 * z, 0, 3.4 * z, 2.3 * z);
+  }
+  function drawCross(v) {
+    const P = S.p, w = W[P.weapon], x = S.aimX | 0, y = S.aimY | 0, col = S.hitT > 0 ? (S.hitK ? '#ff4d5e' : '#ffe066') : '#ffffff';
+    const px = (a, b, ww, hh) => { v.fillStyle = OUT; v.fillRect(a - 1, b - 1, ww + 2, hh + 2); v.fillStyle = col; v.fillRect(a, b, ww, hh); };
+    const ring = (r, a0 = 0, a1 = 7, c2 = col, lw = 1) => { v.strokeStyle = OUT; v.lineWidth = lw + 2; v.beginPath(); v.arc(x + 0.5, y + 0.5, r, a0, a1); v.stroke(); v.strokeStyle = c2; v.lineWidth = lw; v.beginPath(); v.arc(x + 0.5, y + 0.5, r, a0, a1); v.stroke(); };
+    if (P.drone || !P.alive || w.kind === 'drone') { px(x - 1, y - 1, 3, 3); ring(7); }
+    else if (w.kind === 'bullet') {
+      const m = muzzle(), d = Math.hypot(S.aimX - m.x, S.aimY - m.y), sp = w.spread + (w.auto ? P.bloom || 0 : 0) + (P.climb || 0) * 0.5, gap = Math.round(clamp(3 + d * Math.tan(sp) + (P.recoil || 0) * 0.7, 3, 70));
+      if (w.pellets > 1) { ring(gap); px(x, y, 1, 1); }
+      else if (w.id === 'sniper') { px(x - 1, y - 1, 3, 3); px(x - 10, y, 5, 1); px(x + 6, y, 5, 1); px(x, y + 6, 1, 5); }
+      else { px(x - gap - 5, y, 5, 1); px(x + gap + 1, y, 5, 1); px(x, y - gap - 5, 1, 5); px(x, y + gap + 1, 1, 5); px(x, y, 1, 1); }
+    } else if (w.kind === 'flame') { ring(10, 0.3, 2.84); ring(10, 3.44, 5.98); px(x, y, 1, 1); }
+    else { ring(8); px(x - 12, y, 4, 1); px(x + 9, y, 4, 1); px(x, y - 12, 1, 4); px(x, y + 9, 1, 4); }
+    if (P.rl) { const e = P.rl.t / P.rl.dur; ring(16, 0, 7, '#3c3f60', 2); ring(16, -Math.PI / 2, -Math.PI / 2 + e * Math.PI * 2, '#ffe066', 2); }
+    else if (w.spin && P.spin > 0 && P.spin < 1) ring(16, -Math.PI / 2, -Math.PI / 2 + P.spin * Math.PI * 2, '#57e3ff', 2);
+    else if (MAG[w.id] && ammoOf(P, w.id) <= Math.ceil(MAG[w.id][0] * 0.25)) { v.font = '8px Silkscreen, ui-monospace, monospace'; v.textAlign = 'center'; v.lineWidth = 3; v.strokeStyle = OUT; const tx = ammoOf(P, w.id) ? String(ammoOf(P, w.id)) : 'R'; v.strokeText(tx, x, y + 26); v.fillStyle = '#ff4d5e'; v.fillText(tx, x, y + 26); v.textAlign = 'left'; }
+    if (S.hitT > 0) { const k = 4 + (1 - S.hitT / 0.14) * 3; v.lineCap = 'butt'; for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { v.strokeStyle = OUT; v.lineWidth = 4; v.beginPath(); v.moveTo(x + 0.5 + sx * k, y + 0.5 + sy * k); v.lineTo(x + 0.5 + sx * (k + 5), y + 0.5 + sy * (k + 5)); v.stroke(); v.strokeStyle = col; v.lineWidth = 2; v.stroke(); } }
+  }
   function draw() {
     const L = S.L, v = S.vctx, cam = Math.round(S.cam);
     v.setTransform(1, 0, 0, 1, 0, 0); v.globalAlpha = 1; v.globalCompositeOperation = 'source-over'; v.imageSmoothingEnabled = false;
@@ -1253,15 +1437,22 @@
       else if (k === 'fire' || k === 'flame') { const r = Math.max(1, Math.round((f.s || 3) * (1.25 - e * 0.65) * 0.7)), pal = FIRE[Math.min(4, (e * 5) | 0)], img = puff(r, ...pal); v.drawImage(img, (f.x - r) | 0, (f.y - r) | 0); }
       else if (k === 'ember') { v.fillStyle = Math.random() < 0.5 ? '#ffb020' : '#ff5d4a'; v.fillRect(f.x | 0, (f.y - 1) | 0, 2, 2); }
       else if (k === 'smoke') { const r = Math.max(1, Math.round(f.s * (0.6 + e) * 0.55)), img = puff(r, ...(f.c ? ['#c9cde6', '#9a9fbd', '#6c7194'] : SMOKE[r & 1])); v.globalAlpha = (1 - e) * 0.75; v.drawImage(img, (f.x - r) | 0, (f.y - r) | 0); v.globalAlpha = 1; }
-      else if (k === 'shell') { v.fillStyle = '#ffcf3d'; v.fillRect(f.x | 0, f.y | 0, 3, 2); }
-      else if (k === 'light') { const g = v.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.s); g.addColorStop(0, `rgba(255,214,120,${f.a * (1 - e)})`); g.addColorStop(1, 'rgba(255,160,60,0)'); v.globalCompositeOperation = 'lighter'; v.fillStyle = g; v.fillRect(f.x - f.s, f.y - f.s, f.s * 2, f.s * 2); v.globalCompositeOperation = 'source-over'; }
+      else if (k === 'shell') { const red = f.ty === 'shell', big = f.ty === 'big', w = big ? 6 : red ? 5 : 4; v.save(); v.translate(f.x | 0, f.y | 0); v.rotate(f.a); v.fillStyle = OUT; v.fillRect(-w / 2 - 1, -2, w + 2, 4); v.fillStyle = red ? '#d6465e' : '#d8a531'; v.fillRect(-w / 2, -1, w, 2); v.fillStyle = red ? '#ffcf3d' : '#fff0a8'; v.fillRect(-w / 2, -1, red ? 2 : w, 1); v.restore(); }
+      else if (k === 'mag') { const al = e > 0.8 ? (1 - e) / 0.2 : 1; v.globalAlpha = al; v.save(); v.translate(f.x | 0, f.y | 0); v.rotate(f.a); const mh = f.id === 'minigun' ? 7 : f.id === 'smg' ? 9 : 6, mw = f.id === 'minigun' ? 10 : 4; v.fillStyle = OUT; v.fillRect(-mw / 2 - 1, -mh / 2 - 1, mw + 2, mh + 2); v.fillStyle = f.id === 'minigun' ? '#2c6b57' : '#1c1f2e'; v.fillRect(-mw / 2, -mh / 2, mw, mh); v.fillStyle = f.id === 'minigun' ? '#4a9a7e' : '#565e80'; v.fillRect(-mw / 2, -mh / 2, mw, 1); if (f.id !== 'minigun') { v.fillStyle = '#d8a531'; v.fillRect(-1, -mh / 2 - 1, 2, 1); } v.restore(); v.globalAlpha = 1; }
+      else if (k === 'num') { v.globalAlpha = e > 0.6 ? (1 - e) / 0.4 : 1; v.font = `${f.big ? 14 : 10}px Silkscreen, ui-monospace, monospace`; v.textAlign = 'center'; v.lineWidth = 3; v.strokeStyle = OUT; v.strokeText(f.n, f.x | 0, f.y | 0); v.fillStyle = f.big ? '#ff4d5e' : '#ffe066'; v.fillText(f.n, f.x | 0, f.y | 0); v.textAlign = 'left'; v.globalAlpha = 1; }
+      else if (k === 'ball') { const r = f.r * (0.45 + 0.85 * Math.sqrt(e)); v.globalAlpha = 1 - e * e; v.fillStyle = e < 0.25 ? '#ffffff' : e < 0.5 ? '#fff1b0' : e < 0.75 ? '#ffb020' : '#ff7a3d'; v.beginPath(); v.arc(f.x, f.y, r, 0, 7); v.fill(); if (e < 0.6) { v.fillStyle = '#ffffff'; v.beginPath(); v.arc(f.x, f.y, r * (0.6 - e), 0, 7); v.fill(); } v.globalAlpha = 1; }
+      else if (k === 'wave') { const r = f.r + (f.max - f.r) * (1 - (1 - e) * (1 - e)); v.globalAlpha = (1 - e) * 0.7; v.strokeStyle = '#ffffff'; v.lineWidth = Math.max(1, 7 * (1 - e)); v.beginPath(); v.arc(f.x, f.y, r, 0, 7); v.stroke(); v.globalAlpha = (1 - e) * 0.25; v.strokeStyle = '#1a1030'; v.lineWidth = Math.max(1, 5 * (1 - e)); v.beginPath(); v.arc(f.x, f.y, r - 6, 0, 7); v.stroke(); v.globalAlpha = 1; }
       else if (k === 'flashb') { v.globalAlpha = 1 - e; v.fillStyle = '#ffffff'; v.save(); v.translate(f.o.x, f.o.y); v.rotate(f.o.a); v.fillRect(-f.o.hw, -f.o.hh, f.o.hw * 2, f.o.hh * 2); v.restore(); v.globalAlpha = 1; }
       else if (k === 'ring') { const r = f.r + (f.max - f.r) * Math.sqrt(e); v.strokeStyle = f.c || '#ffffff'; v.globalAlpha = 1 - e; v.lineWidth = Math.max(1, 4 * (1 - e)); v.beginPath(); v.arc(f.x, f.y, r, 0, 7); v.stroke(); v.globalAlpha = 1; }
     }
     for (const s of S.shots) {
-      if (s.k === 'b' && s.w === 'sniper') { v.strokeStyle = '#ffffff'; v.lineWidth = 2; v.beginPath(); v.moveTo(s.x, s.y); v.lineTo(s.x - s.vx * 0.012, s.y - s.vy * 0.012); v.stroke(); v.strokeStyle = 'rgba(87,227,255,.6)'; v.lineWidth = 4; v.stroke(); }
-      else if (s.k === 'b') { v.strokeStyle = '#ffe066'; v.lineWidth = 2; v.beginPath(); v.moveTo(s.x, s.y); v.lineTo(s.x - s.vx * 0.009, s.y - s.vy * 0.009); v.stroke(); v.fillStyle = '#ffffff'; v.fillRect(s.x - 1, s.y - 1, 2, 2); }
-      else if (s.k === 'r') { v.save(); v.translate(s.x, s.y); v.rotate(Math.atan2(s.vy, s.vx)); v.fillStyle = OUT; v.fillRect(-8, -3, 13, 6); v.fillStyle = '#2c6b57'; v.fillRect(-7, -2, 9, 4); v.fillStyle = C.r; v.fillRect(2, -2, 3, 4); v.restore(); }
+      if (s.k === 'b') {   // a tracer: a hot head and a tail that thins and fades behind it
+        const sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp, sn = s.w === 'sniper', len = Math.min(s.dist || 0, sn ? 110 : s.heavy ? 16 : s.w === 'minigun' ? 26 : 34), th = sn ? 3 : s.heavy ? 1.5 : 2;
+        v.lineCap = 'butt'; const col = sn ? '#9fe8ff' : s.w === 'drone' ? '#c8ff9a' : '#ffc94d';
+        for (let k = 0; k < 3; k++) { v.globalAlpha = [1, 0.55, 0.22][k]; v.strokeStyle = k ? col : '#fff6d0'; v.lineWidth = th * (1 - k * 0.25); v.beginPath(); v.moveTo(s.x - ux * len * k / 3, s.y - uy * len * k / 3); v.lineTo(s.x - ux * len * (k + 1) / 3, s.y - uy * len * (k + 1) / 3); v.stroke(); }
+        v.globalAlpha = 1; v.fillStyle = '#ffffff'; v.fillRect(s.x - th / 2, s.y - th / 2, th, th);
+      }
+      else if (s.k === 'r') { v.save(); v.translate(s.x, s.y); v.rotate(Math.atan2(s.vy, s.vx)); const fl = 4 + Math.random() * 6; v.fillStyle = '#ffb020'; v.fillRect(-10 - fl, -2, fl, 4); v.fillStyle = '#ffffff'; v.fillRect(-11, -1, 3, 2); v.fillStyle = OUT; v.fillRect(-10, -4, 18, 8); v.fillRect(-12, -5, 4, 10); v.fillStyle = '#2c6b57'; v.fillRect(-9, -3, 12, 6); v.fillStyle = '#4a9a7e'; v.fillRect(-9, -3, 12, 1); v.fillStyle = '#e6e9f3'; v.fillRect(3, -3, 3, 6); v.fillStyle = C.r; v.fillRect(6, -2, 2, 4); v.fillStyle = '#1d4a3c'; v.fillRect(-11, -4, 2, 8); v.restore(); }
       else if (s.k === 'm') { v.save(); v.translate(s.x | 0, s.y | 0); v.rotate(s.a || 0); v.fillStyle = OUT; v.fillRect(-4, -3, 9, 7); v.fillStyle = C.o; v.fillRect(-3, -2, 7, 5); v.fillStyle = '#ffd27a'; v.fillRect(-3, -2, 7, 1); v.fillStyle = OUT; v.fillRect(4, -1, 2, 3); v.restore(); if ((s.fuse * 8 | 0) % 2) { v.fillStyle = C.r; v.fillRect(s.x - 1, s.y - 6, 2, 2); } }
       else if (s.k === 'n') { v.fillStyle = OUT; v.fillRect(s.x - 3, s.y - 3, 7, 7); v.fillStyle = s.k === 'm' ? C.o : '#2c6b57'; v.fillRect(s.x - 2, s.y - 2, 5, 5); if ((s.fuse * 8 | 0) % 2) { v.fillStyle = C.r; v.fillRect(s.x, s.y - 4, 1, 2); } }
       else if (s.k === 'd') { v.fillStyle = OUT; v.fillRect(s.x - 5, s.y - 5, 11, 11); v.fillStyle = C.o; v.fillRect(s.x - 4, s.y - 4, 9, 9); v.fillStyle = C.r; v.fillRect(s.x - 1, s.y - 4, 3, 9); }
@@ -1282,11 +1473,13 @@
     for (const r of S.remotes.values()) if (r.alive) drawPlayer(v, r, r.skin, r.name, r.suit, r.rank);
     if (S.p.alive && !S.p.drone && W[S.p.weapon].id === 'sniper' && !(S.p.reload?.sniper > 0)) { const m = muzzle(); let len = 0; const dx = Math.cos(m.a), dy = Math.sin(m.a); while (len < 900 && !contentAt(m.x + dx * len, m.y + dy * len)) len += 6; v.strokeStyle = 'rgba(255,61,94,.55)'; v.lineWidth = 1; v.beginPath(); v.moveTo(m.x, m.y); v.lineTo(m.x + dx * len, m.y + dy * len); v.stroke(); v.fillStyle = '#ff3d5e'; v.fillRect((m.x + dx * len - 1) | 0, (m.y + dy * len - 1) | 0, 3, 3); }
     if (S.p.alive) drawPlayer(v);
-    if (!S.touch) { const x = S.aimX | 0, y = S.aimY | 0; v.fillStyle = OUT; v.fillRect(x - 6, y - 1, 13, 3); v.fillRect(x - 1, y - 6, 3, 13); v.fillStyle = '#ffffff'; v.fillRect(x - 5, y, 4, 1); v.fillRect(x + 2, y, 4, 1); v.fillRect(x, y - 5, 1, 4); v.fillRect(x, y + 2, 1, 4); }
+    glowPass(v, cam);
+    if (!S.touch) drawCross(v);
     const c = S.ctx, sh = S.trauma * S.trauma * 16, ox = Math.round((rnd(-sh, sh) + S.ckx) * S.k) * S.dpr, oy = Math.round((rnd(-sh, sh) + S.cky) * S.k) * S.dpr;
     c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false;
     c.fillStyle = '#120f2e'; c.fillRect(0, 0, S.cv.width, S.cv.height);
     c.drawImage(S.view, ox, oy, S.vw * S.k * S.dpr, S.vh * S.k * S.dpr);
+    c.imageSmoothingEnabled = true; c.drawImage(S.vig, 0, 0, S.cv.width, S.cv.height); c.imageSmoothingEnabled = false;
     if (S.flash > 0.01) { c.fillStyle = `rgba(255,255,255,${S.flash})`; c.fillRect(0, 0, S.cv.width, S.cv.height); }
     if (Wreck.net && (S.p.hurtT > 0 || S.p.hp < 30)) { const a = Math.min(0.55, S.p.hurtT * 1.6 + (S.p.hp < 30 && S.p.alive ? 0.15 + 0.08 * Math.sin(S.frame / 6) : 0)), gr = c.createRadialGradient(S.cv.width / 2, S.cv.height / 2, S.cv.height * 0.35, S.cv.width / 2, S.cv.height / 2, S.cv.height * 0.8); gr.addColorStop(0, 'rgba(255,40,60,0)'); gr.addColorStop(1, `rgba(255,40,60,${a})`); c.fillStyle = gr; c.fillRect(0, 0, S.cv.width, S.cv.height); }
   }
@@ -1319,6 +1512,7 @@
 
   function ik(ax, ay, tx, ty, l1, l2, s) { let dx = tx - ax, dy = ty - ay, d = Math.hypot(dx, dy); const m = l1 + l2 - 0.01; if (d > m) { dx *= m / d; dy *= m / d; d = m; } const a = Math.atan2(dy, dx), c = clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1), b = Math.acos(c) * s; return [ax + Math.cos(a - b) * l1, ay + Math.sin(a - b) * l1, ax + dx, ay + dy]; }
   function drawPlayer(v, P = S.p, skin = Wreck.skin, name, suitId = unlocked(skinOf(Wreck.suit)) ? Wreck.suit : 'standard', rank) {
+    { let d = 0; while (d < 70 && !solid(P.x, P.y + d)) d += 2; if (d < 70) { const k = 1 - d / 70; v.fillStyle = `rgba(6,4,18,${0.32 * k})`; v.beginPath(); v.ellipse(P.x, P.y + d, 13 * (0.6 + 0.4 * k), 2.5, 0, 0, 7); v.fill(); } }   // contact shadow
     if (P.shield > 0 && (S.frame >> 2) % 2) v.globalAlpha = 0.45;
     drawSuit(v, P, /^#[0-9a-f]{6}$/i.test(skin) ? skin : '#5b6bd6', suitId); v.globalAlpha = 1;
     if (P.hurtT > 0 && (S.frame >> 1) % 2) { v.globalCompositeOperation = 'lighter'; v.globalAlpha = 0.35; drawSuit(v, P, '#ff3040', suitId); v.globalAlpha = 1; v.globalCompositeOperation = 'source-over'; }
@@ -1357,6 +1551,12 @@
   .promo canvas{width:48px;height:48px;image-rendering:pixelated}.promo b{display:block;font-size:20px;font-weight:400;color:#ffe066}.promo small{display:block;font-size:10px;color:#a4a8c8}
   @keyframes pr{0%{opacity:0;transform:translate(-50%,-12px) scale(.9)}10%{opacity:1;transform:translate(-50%,0) scale(1)}85%{opacity:1}100%{opacity:0}}
   .wname{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);padding:6px 12px;font-size:14px;pointer-events:none;transition:opacity .3s}
+  .ammo{position:fixed;right:14px;bottom:12px;display:flex;align-items:center;gap:10px;padding:8px 12px;pointer-events:none;min-width:190px}
+  .ammo canvas{width:56px;height:28px;image-rendering:pixelated}
+  .ammo .an{font-size:26px;line-height:1;color:#ffffff;text-shadow:2px 2px 0 #07080f}.ammo .an small{font-size:12px;color:#a4a8c8;margin-left:4px}
+  .ammo .an.low{color:#ff4d5e}.ammo em{display:block;font-style:normal;font-size:10px;color:#ffe066;margin-top:3px;letter-spacing:.5px}
+  .ammo .rb{height:4px;background:#0b0c14;margin-top:5px;position:relative;overflow:hidden}.ammo .rb i{position:absolute;inset:0 auto 0 0;width:0;background:#ffe066}
+  @media (max-width:1180px){.ammo{bottom:84px}}
   .help{position:fixed;left:14px;bottom:12px;padding:9px 11px;font-size:11px;line-height:2;pointer-events:none;transition:opacity .8s}
   .help b{display:inline-block;min-width:16px;text-align:center;background:#0b0c14;border-radius:2px;padding:0 4px;margin-right:3px;color:#ffe066;font-weight:400}
   .ov{position:fixed;inset:0;display:grid;place-items:center;background:rgba(10,8,30,.55);pointer-events:auto}
@@ -1370,7 +1570,7 @@
   .stick{position:fixed;width:116px;height:116px;margin:-58px 0 0 -58px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(28,29,43,.35);pointer-events:none;display:none}
   .stick i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,224,102,.7)}
   .tb{position:fixed;right:12px;bottom:76px;display:none;flex-direction:column;gap:8px;pointer-events:auto}.tb button{width:54px;height:54px;font-size:16px;padding:0}
-  @media (pointer:coarse){.help{display:none}.tb{display:flex}.slot{width:48px;height:40px}.slot canvas{width:42px;height:21px}.meter{width:150px;font-size:12px}.btns button{padding:8px}}
+  @media (pointer:coarse){.help{display:none}.tb{display:flex}.slot{width:48px;height:40px}.slot canvas{width:42px;height:21px}.ammo{right:auto;left:14px;bottom:auto;top:104px;min-width:0;padding:6px 9px}.ammo canvas{display:none}.ammo .an{font-size:18px}.meter{width:150px;font-size:12px}.btns button{padding:8px}}
   `;
   function buildHud() {
     if (!document.getElementById('wreck-font')) { const l = document.createElement('link'); l.id = 'wreck-font'; l.rel = 'stylesheet'; l.href = 'https://fonts.googleapis.com/css2?family=Silkscreen&display=swap'; l.setAttribute('data-wreck', ''); document.head.appendChild(l); }
@@ -1387,30 +1587,38 @@
       <div class="dead" style="display:none"></div>
       <div class="pn bat" style="display:none"><span>Drone</span><div class="hbar"><i></i></div><small>WASD fly · Click fire · Right-click dive</small></div>
       <div class="pn wbar"></div>
-      <div class="pn help"><b>A</b><b>D</b>run <b>W</b>jump · tap to flip · hold to fly<br><b>S</b>drop <b>Click</b>shoot <b>Right</b>grenade <b>1-0</b>weapons<br><b>Esc</b>pause</div>
+      <div class="pn ammo"><canvas width="56" height="28"></canvas><div><div class="an">0</div><em>Pistol</em><div class="rb"><i></i></div></div></div>
+      <div class="pn help"><b>A</b><b>D</b>run <b>W</b>jump · tap to flip · hold to fly<br><b>S</b>drop <b>Click</b>shoot <b>Right</b>grenade <b>R</b>reload<br><b>1-0</b>weapons (twice: swap) <b>Esc</b>pause</div>
       <div class="turn">Turn your phone sideways to play</div>
       <div class="stick l"><i></i></div><div class="stick r"><i></i></div>
       <div class="tb"><button class="tj">▲</button><button class="tn">✹</button><button class="tw">⇄</button></div>`;
     const $ = (s) => root.querySelector(s), bar = $('.wbar');
-    const icon = (w) => { const c = document.createElement('canvas'); c.width = 56; c.height = 28; const g = c.getContext('2d'), s = gunSprite(w.id || 'nade').s, sc = Math.max(1, Math.floor(Math.min(52 / s.cv.width, 24 / s.cv.height))); g.imageSmoothingEnabled = false; g.drawImage(s.cv, Math.round((56 - s.cv.width * sc) / 2), Math.round((28 - s.cv.height * sc) / 2), s.cv.width * sc, s.cv.height * sc); return c; };
+    const icon = (w, c = document.createElement('canvas')) => { c.width = 56; c.height = 28; const g = c.getContext('2d'), s = gunSprite(w.id || 'nade').s, sc = Math.max(1, Math.floor(Math.min(52 / s.cv.width, 24 / s.cv.height))); g.imageSmoothingEnabled = false; g.drawImage(s.cv, Math.round((56 - s.cv.width * sc) / 2), Math.round((28 - s.cv.height * sc) / 2), s.cv.width * sc, s.cv.height * sc); return c; };
     [...W.slice(0, 10), NADE].forEach((w, i) => {
       const d = document.createElement('div'); d.className = 'slot'; d.title = w.name; d.innerHTML = `<span>${i < 10 ? (i + 1) % 10 : 'RMB'}</span>`; d.appendChild(icon(w));
-      d.addEventListener('pointerdown', (e) => { e.stopPropagation(); if (i < 10) setWeapon(i === 5 ? slot6() : i); else throwGrenade(); }); bar.appendChild(d);
+      d.addEventListener('pointerdown', (e) => { e.stopPropagation(); if (i < 10) setWeapon(slotPick(i)); else throwGrenade(); }); bar.appendChild(d);
     });
     $('.snd').onclick = toggleMute; $('.rst').onclick = rebuild; $('.ext').onclick = stop;
     root.querySelectorAll('button').forEach((b) => b.addEventListener('pointerdown', (e) => e.stopPropagation()));
     document.documentElement.appendChild(host);
     const nslot = bar.lastChild; const cdv = document.createElement('div'); cdv.className = 'cdv'; nslot.appendChild(cdv);
     const dcdv = document.createElement('div'); dcdv.className = 'cdv'; bar.children[7].appendChild(dcdv);
-    return { host, root, $, pct: $('.pct'), bar: $('.bar i'), wname: $('.wname'), slots: [...bar.children], help: $('.help'), cdv, dcdv, bat: $('.bat'), batbar: $('.bat i'), xp: $('.xpp'), hpw: $('.hp'), hbar: $('.hbar i'), hpn: $('.hpn'), dead: $('.dead') };
+    return { host, root, $, pct: $('.pct'), bar: $('.bar i'), wname: $('.wname'), slots: [...bar.children], help: $('.help'), cdv, dcdv, bat: $('.bat'), batbar: $('.bat i'), icon, aic: $('.ammo canvas'), aname: $('.ammo em'), anum: $('.ammo .an'), arb: $('.ammo .rb i'), xp: $('.xpp'), hpw: $('.hp'), hbar: $('.hbar i'), hpn: $('.hpn'), dead: $('.dead') };
   }
   // slot 6 holds the Flamethrower and the Executor: press again to swap; online it starts on the Executor
-  function slot6() { const P = S.p, sn = W.length - 1; return P.weapon === 5 ? sn : P.weapon === sn ? 5 : Wreck.net ? sn : 5; }
+  // press a slot again to swap to its other gun; online, slot 6 starts on the Executor
+  function slotPick(k) { const g = SLOTS[k], cur = g.indexOf(S.p.weapon); if (cur >= 0 && g.length > 1) return g[(cur + 1) % g.length]; return k === 5 && Wreck.net ? 10 : g[0]; }
   function setWeapon(i) {
     const P = S.p; if (P.drone) return; if (P.weapon !== i) { P.kr = -0.9; P.krv = 0; sfx('tick'); } P.weapon = i; P.cd = Math.max(P.cd, 0.12); P.charge = -1;
-    S.hud.slots.forEach((s, k) => s.classList.toggle('on', k === (i === W.length - 1 ? 5 : i)));
-    if (i === 5 || i === W.length - 1) { const c = S.hud.slots[5].querySelector('canvas'), g = c.getContext('2d'), sp = gunSprite(W[i].id).s, sc = Math.max(1, Math.floor(Math.min(52 / sp.cv.width, 24 / sp.cv.height))); g.clearRect(0, 0, 56, 28); g.imageSmoothingEnabled = false; g.drawImage(sp.cv, Math.round((56 - sp.cv.width * sc) / 2), Math.round((28 - sp.cv.height * sc) / 2), sp.cv.width * sc, sp.cv.height * sc); }
+    P.spin = 0; S.hud.slots.forEach((s, k) => s.classList.toggle('on', k === slotOf(i))); S.hud.icon(W[i], S.hud.aic); S.hud.aname.textContent = W[i].name;
+    if (SLOTS[slotOf(i)].length > 1) { const c = S.hud.slots[slotOf(i)].querySelector('canvas'), g = c.getContext('2d'), sp = gunSprite(W[i].id).s, sc = Math.max(1, Math.floor(Math.min(52 / sp.cv.width, 24 / sp.cv.height))); g.clearRect(0, 0, 56, 28); g.imageSmoothingEnabled = false; g.drawImage(sp.cv, Math.round((56 - sp.cv.width * sc) / 2), Math.round((28 - sp.cv.height * sc) / 2), sp.cv.width * sc, sp.cv.height * sc); }
     S.hud.wname.textContent = W[i].name; S.hud.wname.style.opacity = '1'; S.wnameT = 1.4; flameSound(false);
+  }
+  function ammoHud() {
+    const P = S.p, w = W[P.weapon], mag = MAG[w.id], H = S.hud;
+    if (P.drone) { H.anum.textContent = Math.max(0, Math.ceil(P.drone.battery)) + 's'; H.arb.style.width = (P.drone.battery / DR.battery * 100).toFixed(0) + '%'; return; }
+    if (mag) { const n = ammoOf(P, w.id); H.anum.innerHTML = `${n}<small>/ ${mag[0]}</small>`; H.anum.classList.toggle('low', n <= Math.ceil(mag[0] * 0.25)); H.arb.style.width = P.rl ? (MAG[w.id][2] ? n / mag[0] * 100 : P.rl.t / P.rl.dur * 100).toFixed(0) + '%' : '0%'; H.aname.textContent = P.rl ? 'Reloading' : w.spin && P.spin > 0 && P.spin < 1 ? 'Spinning up' : w.name; }
+    else { H.anum.innerHTML = '∞'; H.anum.classList.remove('low'); const cd = w.kind === 'drone' ? (P.droneCd || 0) / (P.droneMax || 1) : Math.max(0, P.cd) / (w.cd || 1); H.arb.style.width = (clamp(cd, 0, 1) * 100).toFixed(0) + '%'; H.aname.textContent = w.name; }
   }
   function labels() { const c = matchMedia('(pointer: coarse)').matches; S.hud.$('.snd').textContent = c ? (muted ? 'x' : '♪') : muted ? 'Sound off' : 'Sound on'; S.hud.$('.rst').textContent = c ? '↻' : 'Rebuild'; S.hud.$('.ext').textContent = c ? '✕' : 'Exit'; }
   function toggleMute() { muted = !muted; try { localStorage.setItem('wreck-muted', muted ? '1' : '0'); } catch {} labels(); if (muted) flameSound(false); }
@@ -1422,7 +1630,7 @@
     if (S.wnameT > 0 && (S.wnameT -= dt) <= 0) S.hud.wname.style.opacity = '0';
     if ((S.frame & 3) === 0) {
       S.hud.cdv.style.height = (Math.max(0, S.nadeCd) / (S.nadeMax || 1) * 100).toFixed(0) + '%';
-      const rw = W[S.p.weapon], rl = S.p.reload?.[rw.id]; S.hud.slots[rw.id === 'sniper' ? 5 : S.p.weapon].style.opacity = rl > 0 ? '0.5' : '';
+      const rw = W[S.p.weapon], rl = S.p.reload?.[rw.id]; S.hud.slots[slotOf(S.p.weapon)].style.opacity = rl > 0 ? '0.5' : ''; ammoHud();
       S.hud.dcdv.style.height = ((S.p.drone ? 1 : Math.max(0, S.p.droneCd || 0) / (S.p.droneMax || 1)) * 100).toFixed(0) + '%';
       const dr = S.p.drone; S.hud.bat.style.display = dr ? '' : 'none';
       if (dr) { const b = Math.max(0, dr.battery / DR.battery); S.hud.batbar.style.width = (b * 100).toFixed(0) + '%'; S.hud.batbar.style.background = b > 0.5 ? '#57e3ff' : b > DR.low ? '#ffb020' : '#ff4d5e'; }
@@ -1454,10 +1662,11 @@
     if (k) { if (down && k === 'jump' && !S.in.jump) S.in.jumpPressed = true; if (down && k === 'down' && !S.in.down) S.in.downPressed = true; S.in[k] = down; }
     if (down && !e.repeat) {
       if (e.code === 'Escape') { if (S.paused) { S.hud.root.querySelector('.ov')?.remove(); S.paused = false; } else overlay('pause'); }
-      else if (e.code === 'KeyR') rebuild();
+      else if (e.code === 'KeyR') startReload(S.p);
+      else if (e.code === 'Backspace') rebuild();
       else if (e.code === 'KeyM') toggleMute();
       else if (e.code === 'KeyQ' || e.code === 'KeyE' || e.code === 'KeyG') throwGrenade();
-      else if (/^Digit\d$/.test(e.code)) { const n = (+e.code.slice(5) + 9) % 10; setWeapon(n === 5 ? slot6() : n); }
+      else if (/^Digit\d$/.test(e.code)) setWeapon(slotPick((+e.code.slice(5) + 9) % 10));
     }
     e.preventDefault(); e.stopImmediatePropagation();
   }
@@ -1467,7 +1676,7 @@
     const aimAt = (e) => { S.mx = e.clientX / S.k; S.my = e.clientY / S.k; };
     on(window, 'keydown', onKey, true); on(window, 'keyup', onKey, true);
     on(cv, 'contextmenu', (e) => e.preventDefault());
-    on(cv, 'wheel', (e) => { e.preventDefault(); if (Math.abs(e.deltaY) > 4 && S.time - (S.wheelT || 0) > 0.09) { S.wheelT = S.time; const c = S.p.weapon >= 10 ? 5 : S.p.weapon; setWeapon((c + (e.deltaY > 0 ? 1 : 9)) % 10); } }, { passive: false });
+    on(cv, 'wheel', (e) => { e.preventDefault(); if (Math.abs(e.deltaY) > 4 && S.time - (S.wheelT || 0) > 0.09) { S.wheelT = S.time; const c = ORDER.indexOf(S.p.weapon); setWeapon(ORDER[(c + (e.deltaY > 0 ? 1 : ORDER.length - 1)) % ORDER.length]); } }, { passive: false });
     on(cv, 'pointermove', (e) => (e.pointerType === 'mouse' ? aimAt(e) : touchMove(e)));
     on(cv, 'pointerdown', (e) => { audio(); AC?.resume?.(); if (e.pointerType !== 'mouse') return touchDown(e); aimAt(e); if (e.button === 2) throwGrenade(); else { I.fire = true; S.fired = false; S.fireQ = 0.25; } });
     on(window, 'pointerup', (e) => { if (e.pointerType !== 'mouse') return touchUp(e); if (e.button !== 2) I.fire = false; });
@@ -1475,7 +1684,7 @@
     on(window, 'blur', () => { for (const k in I) I[k] = false; });
     on(window, 'resize', () => { clearTimeout(S.rt); S.rt = setTimeout(() => S && resize(), 200); });
     const tb = (sel, fn, up) => { const b = S.hud.$(sel); on(b, 'pointerdown', (e) => { e.stopPropagation(); audio(); fn(); }); if (up) { on(b, 'pointerup', up); on(b, 'pointerleave', up); } };
-    tb('.tj', () => { I.jumpPressed = true; I.jump = true; }, () => (I.jump = false)); tb('.tn', throwGrenade); tb('.tw', () => setWeapon(S.p.weapon >= 9 ? 0 : S.p.weapon + 1));
+    tb('.tj', () => { I.jumpPressed = true; I.jump = true; }, () => (I.jump = false)); tb('.tn', throwGrenade); tb('.tw', () => setWeapon(ORDER[(ORDER.indexOf(S.p.weapon) + 1) % ORDER.length]));
   }
   function touchDown(e) {
     S.touch = true; const left = e.clientX < S.sw / 2, st = S.hud.$(left ? '.stick.l' : '.stick.r');
@@ -1599,10 +1808,10 @@
 
   // ------------------------------------------------------------------ health and PvP (online only)
   const MAX_HP = 100, RESPAWN = 3, SHIELD = 1.5;
-  const DMG = { pistol: 22, smg: 9, shotgun: 11, drone: 5 };
+  const DMG = { pistol: 22, smg: 9, shotgun: 11, drone: 5, minigun: 6 };
   const dmgOf = (s) => s.w === 'sniper' ? 120 + (55 - 120) * clamp(((s.dist || 0) - 900) / 600, 0, 1) : DMG[s.w] ?? 10;   // the Executor falls off past 900px
   const BLAST = { rocket: 95, grenade: 85, bomblet: 40, drone: 60, hole: 70 };
-  const WNAME = { sniper: 'Executor', lava: 'Lava', pistol: 'Pistol', smg: 'SMG', shotgun: 'Shotgun', rocket: 'Rocket', rail: 'Railgun', flame: 'Flamethrower', bomblet: 'Doomsday', grenade: 'Grenade', drone: 'Drone', hole: 'Black Hole' };
+  const WNAME = { minigun: 'Minigun', sniper: 'Executor', lava: 'Lava', pistol: 'Pistol', smg: 'SMG', shotgun: 'Shotgun', rocket: 'Rocket', rail: 'Railgun', flame: 'Flamethrower', bomblet: 'Doomsday', grenade: 'Grenade', drone: 'Drone', hole: 'Black Hole' };
   const me = () => Wreck.selfId || 'me';
   // a bullet at x, y hits a living player other than its owner (shields still stop bullets)
   function playerAt(x, y, owner) {
@@ -1664,6 +1873,7 @@
       if (R.dr) { const k2 = 1 - Math.exp(-dt * 14); R.dr.x += (R.dr.tx - R.dr.x) * k2; R.dr.y += (R.dr.ty - R.dr.y) * k2; R.dr.rotor += dt * 60; }
       R.tokens = Math.min(60, R.tokens + dt * 40);
       if (R.fi && W[R.weapon]?.kind === 'flame') flames(R, muzzle(R));
+      R.spinT = (R.spinT || 0) - dt; R.spin = R.spinT > 0 ? 1 : Math.max(0, (R.spin || 0) - dt * 4); R.spinA = (R.spinA || 0) + R.spin * dt * 42;
       stepRig(R, dt);
     }
   }
@@ -1700,7 +1910,7 @@
         R.tokens--;
         S.shots.push({ k: s.k, owner: id, w: typeof s.w === 'string' ? s.w.slice(0, 12) : undefined, range: num(s.range, 0, 4000) ?? undefined, x, y, vx, vy, dmg: num(s.dmg, 0, 40) ?? 10, pierce: num(s.pierce, 0, 6) ?? 1, carve: num(s.carve, 1, 5) ?? 3, fuse: num(s.fuse, 0, 3) ?? 1, life: num(s.life, 0.1, 5) ?? 1, r: num(s.r, 10, 60) ?? undefined, t: 0, remote: true });
       }
-      R.recoil = W[R.weapon]?.kick || 2; R.muzzle = 0.05; sfx('shot', 0.35);
+      R.recoil = W[R.weapon]?.kick || 2; R.muzzle = 0.05; S.flashSeed = 1 + ((Math.random() * 2e9) | 0); sfx(SND[W[R.weapon]?.id] || 'shot', 0.4); if (W[R.weapon]?.spin) R.spinT = 0.3;
     } else if (m.t === 'r') {
       const x = num(m.x, 0, L.vw), y = num(m.y, -400, L.WH), a = num(m.a, -7, 7); if (x == null || y == null || a == null || R.tokens < 10) return;
       R.tokens -= 10; R.recoil = 9; rail({ x, y, a }, id);
@@ -1717,6 +1927,8 @@
     S.k = S.sw / S.L.vw; S.vw = S.L.vw; S.vh = Math.ceil(S.sh / S.k);
     S.cv.width = Math.round(S.sw * S.dpr); S.cv.height = Math.round(S.sh * S.dpr);
     S.view.width = S.vw; S.view.height = S.vh; S.vctx = S.view.getContext('2d');
+    S.glow = document.createElement('canvas'); S.glow.width = Math.ceil(S.vw / 4); S.glow.height = Math.ceil(S.vh / 4); S.gctx = S.glow.getContext('2d');
+    S.vig = document.createElement('canvas'); S.vig.width = S.vig.height = 128; { const x = S.vig.getContext('2d'), g = x.createRadialGradient(64, 64, 34, 64, 64, 92); g.addColorStop(0, 'rgba(8,5,24,0)'); g.addColorStop(1, 'rgba(8,5,24,.38)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); }
     S.back = backdrop(S.vw, S.vh, S.L.theme || 'city'); if (S.L.art) S.back.view = 1; S.vArea = S.vw * S.vh;
   }
   function build() {
@@ -1761,14 +1973,14 @@
         const P = S.p; P.cd -= dt; S.nadeCd -= dt;
         Pl.droneCd = Math.max(0, (Pl.droneCd || 0) - dt);
         if (Pl.drone) { if (!Pl.alive) { Pl.drone.state = 3; } stepDrone(Pl, dt); } else if (S.in.fire || S.fireQ > 0) fire(); S.fireQ -= dt;
-        flameSound(S.in.fire && W[P.weapon].kind === 'flame'); jetSound(P.jetK || 0);
+        flameSound(S.in.fire && W[P.weapon].kind === 'flame'); jetSound(P.jetK || 0); whir(W[P.weapon].spin && P.alive ? P.spin || 0 : 0);
         stepRemotes(dt);
         stepShots(dt); stepBodies(dt); stepFx(dt);
         if (Wreck.net && (S.sendT = (S.sendT || 0) - dt) <= 0) { S.sendT = 1 / 15; net({ t: 's', x: r1(P.x), y: r1(P.y), vx: r1(P.vx), vy: r1(P.vy), a: r3(P.aim), w: P.weapon, f: P.face, fl: r3(P.flip), j: P.jet ? 1 : 0, g: P.grounded ? 1 : 0, fi: S.in.fire && W[P.weapon].kind === 'flame' ? 1 : 0, hp: Math.round(P.hp), al: P.alive ? 1 : 0, sh: P.shield > 0 ? 1 : 0, dr: P.drone ? [r1(P.drone.x), r1(P.drone.y), r3(P.drone.gunA), r3(P.drone.tilt + (P.drone.spinA || 0)), P.drone.state, Math.round(P.drone.hp), P.drone.firing ? 1 : 0] : 0 }); }
-        const target = clamp((P.drone ? P.drone.y + 40 : P.y) - S.vh * 0.55, 0, Math.max(0, S.L.WH - S.vh));
+        const target = clamp((P.drone ? P.drone.y + 40 : P.y) - S.vh * 0.55 + (S.touch ? 0 : clamp(S.my - S.vh * 0.5, -S.vh * 0.5, S.vh * 0.5) * 0.16), 0, Math.max(0, S.L.WH - S.vh));
         S.cam += (target - S.cam) * (1 - Math.exp(-dt * 6));
       }
-      S.trauma = Math.max(0, S.trauma - (1 / 60) * 1.4); S.ckx *= 0.78; S.cky *= 0.78; S.flash *= 0.86; S.muzzle -= 1 / 60; S.p.muzzle = S.muzzle;
+      S.hitT = Math.max(0, (S.hitT || 0) - 1 / 60); S.trauma = Math.max(0, S.trauma - (1 / 60) * 1.4); S.ckx *= 0.78; S.cky *= 0.78; S.flash *= 0.86; S.muzzle -= 1 / 60; S.p.muzzle = S.muzzle;
       draw(); hudTick(dt);
       S.raf = requestAnimationFrame(loop);
     };
@@ -1777,7 +1989,7 @@
   function stop() {
     if (!S) return;
     if (Wreck.net && S.time > 60) dailyBump('matches', 1);   // an online match counts once you have played a minute
-    cancelAnimationFrame(S.raf); flameSound(false); jetSound(0); saveXP();
+    cancelAnimationFrame(S.raf); flameSound(false); jetSound(0); whir(0); saveXP();
     for (const [t, ev, fn, o] of S.on) t.removeEventListener(ev, fn, o);
     S.cv.remove(); S.hud.host.remove();
     document.documentElement.style.overflow = S.prevOverflow;
